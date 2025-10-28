@@ -468,13 +468,14 @@ export default {
       // Use composable to get starting items
       return this.getStartingItemsComposable(this.gameMode, this.gameOptions)
     },
-    onConnectionCreated(connection) {
-      log('info', '🔗 Connection created:', connection)
+    onConnectionCreated(data) {
+      log('info', '🔗 Connection created:', data)
       const gs = useGameStateStore()
       
-      // Get the items from the connection object (it stores fromItem and toItem)
-      const from = connection.fromItem
-      const to = connection.toItem
+      // The emit sends { connection, from, to }
+      const connection = data.connection
+      const from = data.from
+      const to = data.to
       
       console.log('🔗 Connection items found:', { from, to, connection })
       
@@ -486,7 +487,7 @@ export default {
         // Broadcast to phone via collaboration
         this.broadcastConnection(from, to)
       } else {
-        console.warn('🔗 Connection items not found!', { fromId: connection.from, toId: connection.to, connection })
+        console.warn('🔗 Connection items not found!', { fromId: connection?.from, toId: connection?.to, connection })
       }
     },
     onCheckGoals(connections) {
