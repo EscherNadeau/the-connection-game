@@ -331,31 +331,26 @@ async function addItem(item: GameItemType): Promise<void> {
   // Start auto-connect system
   startAutoConnect()
   
-  // Immediately check for connections with existing items
+  // Immediately check for connections with existing items (regardless of distance)
   for (const existingItem of gameItems.value) {
     if (existingItem.id === item.id) continue // Skip self
     
-    const distance = Math.sqrt(
-      Math.pow(item.x - existingItem.x, 2) + Math.pow(item.y - existingItem.y, 2)
+    // Check if connection already exists
+    const existingConnection = connections.value.find(conn => 
+      (conn.from === item.id && conn.to === existingItem.id) ||
+      (conn.from === existingItem.id && conn.to === item.id)
     )
     
-    if (distance < 100) {
-      // Check if connection already exists
-      const existingConnection = connections.value.find(conn => 
-        (conn.from === item.id && conn.to === existingItem.id) ||
-        (conn.from === existingItem.id && conn.to === item.id)
-      )
-      
-      if (!existingConnection) {
-        // Check if items are actually related
-        try {
-          const areRelated = await connectionService.checkIfItemsAreRelated(item, existingItem)
-          if (areRelated) {
-            createConnection(item, existingItem)
-          }
-        } catch (error) {
-          console.log('Immediate connection check failed:', error)
+    if (!existingConnection) {
+      // Check if items are actually related
+      try {
+        const areRelated = await connectionService.checkIfItemsAreRelated(item, existingItem)
+        if (areRelated) {
+          console.log('🔗 Auto-connecting:', item.name, 'to', existingItem.name)
+          createConnection(item, existingItem)
         }
+      } catch (error) {
+        console.log('Immediate connection check failed:', error)
       }
     }
   }

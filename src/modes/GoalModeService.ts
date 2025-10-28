@@ -206,21 +206,39 @@ class GoalModeService {
 
   async checkWinCondition() {
     try {
+      console.log('🎯 GoalModeService checkWinCondition called')
+      console.log('🎯 Goal chain length:', this.goalChain.length)
+      console.log('🎯 Current goal index:', this.currentGoalIndex)
+      console.log('🎯 Game items:', this.gameItems.length)
+      
       const currentPair = this.getCurrentGoalPair()
+      console.log('🎯 Current pair:', currentPair)
+      
       if (!currentPair) {
+        console.log('🎯 No current pair found, returning false')
         return false
       }
+      
       const startItem = this.gameItems.find((item) => item.name === currentPair.start.name)
       const endItem = this.gameItems.find((item) => item.name === currentPair.target.name)
+      console.log('🎯 Start item:', startItem)
+      console.log('🎯 End item:', endItem)
+      
       if (!startItem || !endItem) {
+        console.log('🎯 Missing start or end item, returning false')
         return false
       }
+      
       const hasPath = this.checkPathBetweenItems(startItem, endItem)
+      console.log('🎯 Has path:', hasPath)
+      
       if (hasPath) {
+        console.log('🎯 WIN DETECTED!')
         return true
       }
       return false
     } catch (error) {
+      console.log('🎯 Error in checkWinCondition:', error)
       return false
     }
   }

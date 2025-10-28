@@ -289,6 +289,23 @@ export function useGoalManagement() {
         console.log('🎯 Game items:', gameItemsParam.length)
         console.log('🎯 Connections:', connections.length)
         
+        // For Goal Mode: Extract goal chain from starting items
+        let goalChain: any[] = []
+        if (gameMode === 'goal' && gameOptionsParam.startingItems) {
+          // Extract the goal items from starting items
+          const goalItems = gameItemsParam.filter(item => 
+            item.isStartingItem && (item.source === 'goal1' || item.source === 'goal2')
+          )
+          console.log('🎯 Goal items found:', goalItems.length)
+          goalChain = goalItems
+          
+          // Initialize the service with goal chain
+          if (service.initialize) {
+            console.log('🎯 Initializing GoalModeService with goal chain')
+            service.initialize(gameOptionsParam, gameItemsParam, connections, goalChain)
+          }
+        }
+        
         // Update the service with current game state
         if (service.updateGameState) {
           console.log('🎯 Updating game state in service')
@@ -308,12 +325,17 @@ export function useGoalManagement() {
             const winMessage = service.getWinMessage ? service.getWinMessage() : 'You won!'
             const progress = service.getProgressDisplay ? service.getProgressDisplay() : ''
             
-            // Return win data
+            // Return win data with mode to trigger win modal
             return {
+              mode: gameMode, // Add mode so handleGoalCompleted recognizes it
               type: 'win',
               message: winMessage,
               progress: progress,
-              connections: connections
+              connections: connections,
+              stats: {
+                connections: connections.length,
+                items: gameItemsParam.length
+              }
             }
           } else {
             // Update progress display

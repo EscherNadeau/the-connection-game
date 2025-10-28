@@ -134,7 +134,7 @@ export default {
     showTutorial: { type: Boolean, default: false },
     tutorialStep: { type: Number, default: 0 },
   },
-  emits: ['tutorial-next', 'back-to-mode-selection', 'tutorial-start', 'back-to-start', 'tutorial-completed'],
+  emits: ['tutorial-next', 'back-to-mode-selection', 'tutorial-start', 'back-to-start', 'tutorial-completed', 'goal-completed'],
   setup() {
     const gs = useGameStateStore()
     const { timerEnabled, timerRemaining } = storeToRefs(gs)
@@ -500,13 +500,20 @@ export default {
       console.log('🎯 Checking goals with', gameItems.length, 'items and', connections.length, 'connections')
       const result = await this.handleCheckGoals(connections, this.gameOptions, gameItems)
       if (result) {
-        console.log('🎉 Win condition detected, emitting goal-completed')
-        this.$emit('goal-completed', result)
+        console.log('🎉 Win condition detected, calling onGoalCompleted')
+        this.onGoalCompleted(result)
       }
     },
     onGoalCompleted(goalData) {
-      // Use composable to handle goal completion
-      this.handleGoalCompleted(goalData, this.gameOptions, this.roomCode, this.handlePvPGoalCompletion, this.resultModal)
+      console.log('🎉 onGoalCompleted received:', goalData)
+      // Directly show the win modal
+      this.resultModal = {
+        visible: true,
+        type: 'win',
+        title: 'You Win!',
+        subtitle: goalData?.message || 'Goal completed!',
+        stats: goalData?.stats || {},
+      }
     },
     onGoalAdvanced(goalData) {
       // Use composable to handle goal advancement
