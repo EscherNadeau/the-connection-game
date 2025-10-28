@@ -18,7 +18,7 @@ interface TMDBResult {
   [key: string]: any
 }
 
-interface ItemOptions {
+export interface ItemOptions {
   x?: number
   y?: number
   isStartingItem?: boolean
