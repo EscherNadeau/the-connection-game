@@ -237,8 +237,8 @@
           </button>
         </div>
       </div>
-    </div>
-  </div>
+      </div>
+      </div>
 </template>
 
 <script setup lang="ts">
@@ -273,8 +273,8 @@ const backgroundImage = computed(() => props.backgroundImage)
 
 // Methods
 function goBackFromCustomSettings(): void {
-  emit('back')
-}
+      emit('back')
+    }
 
 function handleImport(): void {
   emit('import-game')

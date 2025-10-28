@@ -777,8 +777,9 @@ export default {
   background-size: 182px;
   opacity: 0.12;
   pointer-events: none;
-  z-index: 1000;
+  z-index: 1;
 }
+
 
 /* Header */
 .header {
@@ -966,7 +967,10 @@ export default {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
-  background: linear-gradient(145deg, #001a1f, #1a2a1f);
+  background: 
+    radial-gradient(circle at 20px 20px, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(145deg, #001a1f, #1a2a1f);
+  background-size: 40px 40px;
 }
 
 .empty-playlist {
