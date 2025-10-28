@@ -777,21 +777,7 @@ export default {
   background-size: 182px;
   opacity: 0.12;
   pointer-events: none;
-  z-index: 1;
-}
-
-.show-builder::after {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
-  background-size: 40px 40px;
-  opacity: 0.8;
-  pointer-events: none;
-  z-index: 0;
+  z-index: 1000;
 }
 
 /* Header */
@@ -980,10 +966,7 @@ export default {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
-  background: 
-    radial-gradient(circle at 20px 20px, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-    linear-gradient(145deg, #001a1f, #1a2a1f);
-  background-size: 40px 40px;
+  background: linear-gradient(145deg, #001a1f, #1a2a1f);
 }
 
 .empty-playlist {
