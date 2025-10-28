@@ -1,15 +1,29 @@
 <template>
-  <div class="container">
-    <!-- Back button -->
-    <div class="back-button" @click="exitCustomMode">← Back</div>
+  <div class="custom-mode-panel-container">
+    <div class="custom-header">
+      <h2>🎯 Custom Mode</h2>
+      <button class="close-btn" @click="exitCustomMode">×</button>
+    </div>
 
-    <!-- Main content -->
-    <div class="main-content">
-      <!-- Custom Mode Interface - Simplified version -->
-      <div class="custom-mode-interface">
-        <h2>Custom Mode</h2>
-        <p>Custom mode configuration is temporarily unavailable.</p>
-        <button @click="exitCustomMode" class="back-button">Return to Settings</button>
+    <div class="custom-content">
+      <div class="info-box">
+        <h3>Coming Soon</h3>
+        <p>Custom Mode is under development. Create your own challenge with:</p>
+        <ul>
+          <li>Custom starting points</li>
+          <li>Time limits</li>
+          <li>Connection rules</li>
+          <li>Goal customization</li>
+        </ul>
+      </div>
+
+      <div class="placeholder-actions">
+        <button class="action-btn primary" @click="tryBasicMode">
+          🎲 Use Zen Mode Instead
+        </button>
+        <button class="action-btn" @click="exitCustomMode">
+          ← Back to Modes
+        </button>
       </div>
     </div>
   </div>
@@ -21,78 +35,173 @@ import type { CustomModePanelProps, CustomModePanelEmits } from '../types/game'
 defineProps<CustomModePanelProps>()
 const emit = defineEmits<CustomModePanelEmits>()
 
-// Methods
 function exitCustomMode(): void {
   emit('back')
+}
+
+function tryBasicMode(): void {
+  // Suggest trying Zen mode instead
+  emit('back')
+  // Could emit a mode selection event here if needed
 }
 </script>
 
 <style scoped>
-.container {
-  position: relative;
-  width: 100%;
-  height: 100vh;
-  background: linear-gradient(145deg, #002a33, #2d3a2e);
-  overflow: visible;
-  font-family: 'Courier New', 'Monaco', 'Menlo', 'Consolas', monospace;
-  z-index: 1;
-}
-
-.container::before {
-  content: '';
+.custom-mode-panel-container {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: transparent;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E");
-  background-repeat: repeat;
-  background-size: 182px;
-  opacity: 0.12;
-  z-index: 1000;
-  pointer-events: none;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease;
 }
 
-/* Header section removed */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
-.back-button {
-  position: absolute;
-  top: 20px;
-  left: 30px;
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.1);
+.custom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.custom-header h2 {
+  margin: 0;
   color: white;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  font-size: 1.5rem;
+}
+
+.close-btn {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.2s ease;
-  z-index: 10;
 }
 
-.back-button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
-.button-text {
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.main-content {
-  position: relative;
-  z-index: 2;
+.custom-content {
   flex: 1;
+  padding: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.info-box {
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 500px;
+  text-align: center;
+}
+
+.info-box h3 {
+  color: white;
+  margin: 0 0 1rem 0;
+  font-size: 1.5rem;
+}
+
+.info-box p {
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.info-box ul {
+  text-align: left;
+  color: rgba(255, 255, 255, 0.7);
+  display: inline-block;
+  list-style: none;
   padding: 0;
-  overflow: hidden;
-  height: 100vh;
-  margin-top: 0;
-  padding-top: 0;
+}
+
+.info-box li {
+  padding: 0.5rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.info-box li:before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.placeholder-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  padding: 1rem 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.action-btn.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+}
+
+.action-btn.primary:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #654896 100%);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .custom-header {
+    padding: 1.5rem;
+  }
+
+  .custom-content {
+    padding: 2rem 1.5rem;
+  }
+
+  .placeholder-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .action-btn {
+    width: 100%;
+  }
 }
 </style>
