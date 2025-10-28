@@ -26,7 +26,7 @@ interface ItemOptions {
 }
 
 class ItemService {
-  private itemIdCounter: number = 0
+  itemIdCounter: number = 0
 
   /**
    * Create a unique ID for an item
