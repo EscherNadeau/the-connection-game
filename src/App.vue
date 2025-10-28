@@ -80,7 +80,7 @@
       />
     </template>
     <template v-else-if="currentView === 'custom-mode'">
-      <CustomModePanel 
+      <CustomModeFlow 
         @back="goToStart" 
         @start-game="handleCustomGameStart" 
         :open-browser-on-load="openBrowserOnLoad" 
@@ -112,7 +112,7 @@ import PhoneWaitingRoom from './components/PhoneWaitingRoom.vue'
 import ControllerView from './components/ControllerView.vue'
 import Game from './views/Game.vue'
 import HowToPlayOverlay from './components/HowToPlayOverlay.vue'
-import CustomModePanel from './components/CustomModePanel.vue'
+import CustomModeFlow from './components/CustomModeFlow.vue'
 import { multiplayerService } from './services/MultiplayerService.ts'
 import { log } from './services/ui/log.ts'
 import { useBackgroundStore } from '@store/background.store.ts'
@@ -132,7 +132,7 @@ export default {
     ControllerView,
     Game,
     HowToPlayOverlay,
-    CustomModePanel,
+    CustomModeFlow,
   },
   data() {
     return {
