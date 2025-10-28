@@ -14,8 +14,7 @@
     "lint": "eslint \"src/**/*.{js,ts,vue}\"",
     "lint:fix": "eslint \"src/**/*.{js,ts,vue}\" --fix",
     "type-check": "vue-tsc --noEmit",
-    "format": "prettier --write \"**/*.{js,ts,vue,json,md}\"",
-    "prepare": "husky install"
+    "format": "prettier --write \"**/*.{js,ts,vue,json,md}\""
   },
   "lint-staged": {
     "*.{js,ts,vue,json,md}": [
