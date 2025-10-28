@@ -493,7 +493,9 @@ export default {
     },
     onCheckGoals(connections) {
       // Use composable to handle goal checking
-      this.handleCheckGoals(connections)
+      const gb = this.$refs.gameBoard
+      const gameItems = gb?.gameItems?.value || gb?.gameItems || []
+      this.handleCheckGoals(connections, this.gameOptions, gameItems)
     },
     onGoalCompleted(goalData) {
       // Use composable to handle goal completion

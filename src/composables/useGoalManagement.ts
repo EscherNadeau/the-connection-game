@@ -246,11 +246,11 @@ export function useGoalManagement() {
   /**
    * Handle goal checking
    */
-  async function onCheckGoals(connections: Connection[]): Promise<void> {
+  async function handleCheckGoals(connections: Connection[], gameOptionsParam: GameOptions, gameItemsParam: GameItem[]): Promise<void> {
     log('info', '🎯 Checking goals with connections:', connections.length)
     
     // Get the current game mode service
-    const gameMode = gameOptions.value?.mode || 'hybrid'
+    const gameMode = gameOptionsParam?.mode || 'hybrid'
     
     try {
       // Import the appropriate mode service
@@ -287,7 +287,7 @@ export function useGoalManagement() {
         
         // Update the service with current game state
         if (service.updateGameState) {
-          service.updateGameState(gameItems.value, connections)
+          service.updateGameState(gameItemsParam, connections)
         }
         
         // Check win condition
@@ -389,7 +389,7 @@ export function useGoalManagement() {
     handleAddNewStartingItems: addNewStartingItems,
     generateStartingItemsForGoal,
     showGoalAdvancementNotification,
-    handleCheckGoals: onCheckGoals,
+    handleCheckGoals,
     handleShowPath: onShowPath,
     handleHidePathFromBar: hidePathFromBar,
     handleReShowPath: reShowPath,
