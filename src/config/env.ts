@@ -12,8 +12,13 @@ const getWsUrl = (): string => {
     return envUrl
   }
   
-  // Default to localhost for development
-  // Use the current hostname so it works on local network too
+  // In production, if no WebSocket server is configured, return empty string
+  // This allows the app to work in solo mode without backend errors
+  if (import.meta.env.PROD) {
+    return ''  // Solo mode only - no WebSocket
+  }
+  
+  // Development: Use the current hostname so it works on local network too
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
   return `${protocol}//${location.hostname}:3011`
 }
@@ -26,7 +31,12 @@ const getSnapshotUrl = (): string => {
     return envUrl
   }
   
-  // Default to localhost for development
+  // In production, if no snapshot server is configured, return empty string
+  if (import.meta.env.PROD) {
+    return ''  // Solo mode only - no snapshot server
+  }
+  
+  // Development: Default to localhost
   return `http://${location.hostname}:3011/api/snapshots`
 }
 

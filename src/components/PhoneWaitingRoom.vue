@@ -599,8 +599,12 @@ onMounted(() => {
       }
     })
     
-    // Connect to WebSocket
-    gameStateStore.connectCollab(config.wsUrl)
+    // Connect to WebSocket (only if URL is configured)
+    if (config.wsUrl) {
+      gameStateStore.connectCollab(config.wsUrl)
+    } else {
+      console.log('📱 PhoneWaitingRoom: No WebSocket server configured (solo mode)')
+    }
     
     // Set connection status
     setTimeout(() => {
