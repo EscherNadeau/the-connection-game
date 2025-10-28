@@ -387,7 +387,8 @@
 
 <script>
 import SearchPanel from './SearchPanel.vue'
-import ItemService from '../services/ItemService.js'
+import ItemService from '../services/ItemService.ts'
+import { validate } from '../utils/validation.ts'
 
 export default {
   name: 'CustomModeFlow',
