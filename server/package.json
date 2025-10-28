@@ -1,0 +1,14 @@
+{
+  "name": "collab-server",
+  "version": "1.0.0",
+  "main": "collab-server.js",
+  "license": "MIT",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "ws": "^8.17.0"
+  },
+  "scripts": {
+    "start": "node collab-server.js"
+  }
+}

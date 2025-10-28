@@ -1,0 +1,46 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "include": [
+    "env.d.ts",
+    "src/**/*",
+    "src/**/*.vue"
+  ],
+      "exclude": [
+        "src/**/__tests__/*",
+        "src/**/*_backup.*",
+        "src/**/*_custom_builder_backup.*",
+        "src/components/CustomModeFlow.vue",
+        "src/components/WaitingRoom.vue",
+        "**/WaitingRoom.vue",
+        "src/views/WaitingRoom.vue",
+        "src/components/WaitingRoom.vue"
+      ],
+  "compilerOptions": {
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@store/*": ["./src/store/*"],
+      "@components/*": ["./src/components/*"],
+      "@services/*": ["./src/services/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@composables/*": ["./src/composables/*"]
+    },
+    "types": [
+      "vite/client"
+    ],
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "checkJs": false,
+    "strict": false,
+    "noImplicitAny": false,
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": false,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": false,
+    "allowUnusedLabels": true,
+    "allowUnreachableCode": true,
+    "allowImportingTsExtensions": false
+  }
+}
