@@ -410,6 +410,7 @@ function createConnection(from: GameItemType, to: GameItemType): void {
 }
 
 function checkGoalCompletion(): void {
+  console.log('🎯 checkGoalCompletion called, emitting check-goals with', connections.value.length, 'connections')
   emit('check-goals', connections.value)
 }
 
