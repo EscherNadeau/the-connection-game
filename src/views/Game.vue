@@ -492,13 +492,17 @@ export default {
         console.warn('🔗 Connection items not found!', { fromId: connection?.from, toId: connection?.to, connection, data })
       }
     },
-    onCheckGoals(connections) {
+    async onCheckGoals(connections) {
       console.log('🎯 onCheckGoals called with', connections.length, 'connections')
       // Use composable to handle goal checking
       const gb = this.$refs.gameBoard
       const gameItems = gb?.gameItems?.value || gb?.gameItems || []
       console.log('🎯 Checking goals with', gameItems.length, 'items and', connections.length, 'connections')
-      this.handleCheckGoals(connections, this.gameOptions, gameItems)
+      const result = await this.handleCheckGoals(connections, this.gameOptions, gameItems)
+      if (result) {
+        console.log('🎉 Win condition detected, emitting goal-completed')
+        this.$emit('goal-completed', result)
+      }
     },
     onGoalCompleted(goalData) {
       // Use composable to handle goal completion

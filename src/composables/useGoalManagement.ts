@@ -246,7 +246,7 @@ export function useGoalManagement() {
   /**
    * Handle goal checking
    */
-  async function handleCheckGoals(connections: Connection[], gameOptionsParam: GameOptions, gameItemsParam: GameItem[]): Promise<void> {
+  async function handleCheckGoals(connections: Connection[], gameOptionsParam: GameOptions, gameItemsParam: GameItem[]): Promise<any> {
     log('info', '🎯 Checking goals with connections:', connections.length)
     
     // Get the current game mode service
@@ -285,14 +285,21 @@ export function useGoalManagement() {
       if (modeService && modeService.default) {
         const service = modeService.default
         
+        console.log('🎯 Mode service loaded:', gameMode)
+        console.log('🎯 Game items:', gameItemsParam.length)
+        console.log('🎯 Connections:', connections.length)
+        
         // Update the service with current game state
         if (service.updateGameState) {
+          console.log('🎯 Updating game state in service')
           service.updateGameState(gameItemsParam, connections)
         }
         
         // Check win condition
         if (service.checkWinCondition) {
+          console.log('🎯 Checking win condition...')
           const hasWon = await service.checkWinCondition()
+          console.log('🎯 Win condition result:', hasWon)
           
           if (hasWon) {
             log('info', '🎉 WIN CONDITION MET!')
@@ -301,20 +308,23 @@ export function useGoalManagement() {
             const winMessage = service.getWinMessage ? service.getWinMessage() : 'You won!'
             const progress = service.getProgressDisplay ? service.getProgressDisplay() : ''
             
-            // Emit win event
-            emit('goal-completed', {
+            // Return win data
+            return {
               type: 'win',
               message: winMessage,
               progress: progress,
               connections: connections
-            })
+            }
           } else {
             // Update progress display
             const progress = service.getProgressDisplay ? service.getProgressDisplay() : ''
             if (progress) {
               log('info', 'Progress:', progress)
             }
+            return null
           }
+        } else {
+          console.log('🎯 No checkWinCondition method found on service')
         }
       }
     } catch (error) {
