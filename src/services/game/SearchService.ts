@@ -20,6 +20,15 @@ interface SearchFilters {
   mediaType: string
 }
 
+interface SearchServiceResponse {
+  success: boolean
+  results: SearchResult[]
+  error?: string
+  query?: string
+  totalFound?: number
+  filteredCount?: number
+}
+
 class SearchService {
   private isSearching: boolean = false
   private lastQuery: string = ''
@@ -30,7 +39,7 @@ class SearchService {
   }
 
   // Main search function - the "lego brick" that can be called from anywhere
-  async search(query: string, options: SearchOptions = {}): Promise<SearchResult[]> {
+  async search(query: string, options: SearchOptions = {}): Promise<SearchServiceResponse> {
     // Sanitize overly long or multi-line queries (e.g., pasted logs)
     let sanitized = (query || '').toString().split('\n')[0].trim().slice(0, 80)
 
