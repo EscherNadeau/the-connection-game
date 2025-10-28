@@ -472,13 +472,11 @@ export default {
       log('info', '🔗 Connection created:', connection)
       const gs = useGameStateStore()
       
-      // Find the connected items - gameItems is a ref, so we need .value
-      const gb = this.$refs.gameBoard
-      const gameItems = gb?.gameItems?.value || gb?.gameItems || []
-      const from = gameItems.find((i) => i.id === connection.from)
-      const to = gameItems.find((i) => i.id === connection.to)
+      // Get the items from the connection object (it stores fromItem and toItem)
+      const from = connection.fromItem
+      const to = connection.toItem
       
-      console.log('🔗 Connection items found:', { from, to, connection, gameItemsCount: gameItems.length })
+      console.log('🔗 Connection items found:', { from, to, connection })
       
       if (from && to) {
         // Show popup for successful connection
@@ -488,7 +486,7 @@ export default {
         // Broadcast to phone via collaboration
         this.broadcastConnection(from, to)
       } else {
-        console.warn('🔗 Connection items not found!', { fromId: connection.from, toId: connection.to, availableItemsCount: gameItems.length })
+        console.warn('🔗 Connection items not found!', { fromId: connection.from, toId: connection.to, connection })
       }
     },
     onCheckGoals(connections) {
