@@ -493,9 +493,11 @@ export default {
       }
     },
     onCheckGoals(connections) {
+      console.log('🎯 onCheckGoals called with', connections.length, 'connections')
       // Use composable to handle goal checking
       const gb = this.$refs.gameBoard
       const gameItems = gb?.gameItems?.value || gb?.gameItems || []
+      console.log('🎯 Checking goals with', gameItems.length, 'items and', connections.length, 'connections')
       this.handleCheckGoals(connections, this.gameOptions, gameItems)
     },
     onGoalCompleted(goalData) {
@@ -637,6 +639,10 @@ export default {
     },
   },
   async mounted() {
+    console.log('🎯 Game mounted - Goal queue:', this.gameOptions?.goalQueue)
+    console.log('🎯 Game mode:', this.gameMode?.id)
+    console.log('🎯 Current goal index:', this.gameOptions?.currentGoalIndex)
+    
     // Initialize backgrounds
     await this.initializeBackgrounds()
     
