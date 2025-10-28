@@ -93,8 +93,8 @@
               <input v-model="editingSong.name" type="text" class="form-input" :class="{ 'tutorial-glow-song-info': showTutorial && tutorialStep === 5.9 }" />
             </div>
             <div class="form-group">
-              <label>Description:</label>
-              <input v-model="editingSong.description" type="text" class="form-input" :class="{ 'tutorial-glow-song-info': showTutorial && tutorialStep === 5.9 }" />
+              <label>Description: <span style="font-size: 0.8rem; opacity: 0.6;">(Optional)</span></label>
+              <input v-model="editingSong.description" type="text" class="form-input" placeholder="Add a brief description..." :class="{ 'tutorial-glow-song-info': showTutorial && tutorialStep === 5.9 }" />
             </div>
             <div class="form-group">
               <label>Icon:</label>
