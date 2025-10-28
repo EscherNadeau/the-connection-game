@@ -727,6 +727,8 @@ export default {
           ? (firstEpisode.forbiddenItems || [])
           : (firstEpisode.goals || []),
         settings: firstEpisode.settings || {},
+        // Add isAntiMode flag for game win/lose logic
+        isAntiMode: firstEpisode.modeType === 'anti',
         showData: {
           episodes: this.playlist,
           currentEpisodeIndex: 0,
@@ -759,6 +761,37 @@ export default {
   background: linear-gradient(145deg, #002a33, #2d3a2e);
   color: white;
   font-family: 'Courier New', 'Monaco', 'Menlo', 'Consolas', monospace;
+  position: relative;
+}
+
+.show-builder::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: transparent;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 182px;
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.show-builder::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* Header */
