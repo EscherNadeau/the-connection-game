@@ -320,7 +320,7 @@ function onItemHintClick(item: GameItemType): void {
   emit('hint-requested', item)
 }
 
-function addItem(item: GameItemType): void {
+async function addItem(item: GameItemType): Promise<void> {
   // Generate spawn position
   const spawnPos = getSpawnPosition()
   item.x = spawnPos.x
@@ -330,6 +330,35 @@ function addItem(item: GameItemType): void {
   
   // Start auto-connect system
   startAutoConnect()
+  
+  // Immediately check for connections with existing items
+  for (const existingItem of gameItems.value) {
+    if (existingItem.id === item.id) continue // Skip self
+    
+    const distance = Math.sqrt(
+      Math.pow(item.x - existingItem.x, 2) + Math.pow(item.y - existingItem.y, 2)
+    )
+    
+    if (distance < 100) {
+      // Check if connection already exists
+      const existingConnection = connections.value.find(conn => 
+        (conn.from === item.id && conn.to === existingItem.id) ||
+        (conn.from === existingItem.id && conn.to === item.id)
+      )
+      
+      if (!existingConnection) {
+        // Check if items are actually related
+        try {
+          const areRelated = await connectionService.checkIfItemsAreRelated(item, existingItem)
+          if (areRelated) {
+            createConnection(item, existingItem)
+          }
+        } catch (error) {
+          console.log('Immediate connection check failed:', error)
+        }
+      }
+    }
+  }
   
   emit('item-added', { item })
 }
