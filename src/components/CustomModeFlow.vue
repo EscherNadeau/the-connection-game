@@ -711,14 +711,21 @@ export default {
         return
       }
       const firstEpisode = this.playlist[0]
-      const startingItems = ItemService.goalsToStartingItems(firstEpisode.goals, firstEpisode.modeType)
+      
+      // For Anti Mode, use forbiddenItems instead of goals
+      const startingItems = firstEpisode.modeType === 'anti' 
+        ? (firstEpisode.forbiddenItems || []) 
+        : ItemService.goalsToStartingItems(firstEpisode.goals, firstEpisode.modeType)
+      
       const customGameData = {
         id: firstEpisode.modeType,
         name: firstEpisode.name,
         icon: firstEpisode.icon,
         description: firstEpisode.description,
         modeType: firstEpisode.modeType,
-        goals: firstEpisode.goals || [],
+        goals: firstEpisode.modeType === 'anti' 
+          ? (firstEpisode.forbiddenItems || [])
+          : (firstEpisode.goals || []),
         settings: firstEpisode.settings || {},
         showData: {
           episodes: this.playlist,
