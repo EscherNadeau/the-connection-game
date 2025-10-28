@@ -1899,6 +1899,9 @@ const updateRoomCode = () => {
           gameOptions: {
             modeSettings: modeSettings.value,
             startingItems,
+            goalQueue: [],
+            currentGoalIndex: 0,
+            gameType: props.mode.id,
             ...(isSolo ? { playType: 'solo' } : { roomCode: (sessionStorage.getItem('lastRoomCode') || code), playType: (playType || 'multi') }),
           },
           gameConfig: gameConfig,
