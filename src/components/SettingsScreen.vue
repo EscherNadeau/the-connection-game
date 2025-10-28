@@ -1897,6 +1897,7 @@ const updateRoomCode = () => {
           ...props.mode,
           modeSettings: modeSettings.value,
           gameOptions: {
+            mode: props.mode.id,
             modeSettings: modeSettings.value,
             startingItems,
             goalQueue: [],
