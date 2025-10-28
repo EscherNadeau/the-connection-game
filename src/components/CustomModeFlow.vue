@@ -787,3 +787,50 @@ export default {
 .browser-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .browser-modal { background: linear-gradient(145deg, #002a33, #2d3a2e); border: 2px solid rgba(0,255,136,0.3); border-radius: 8px; width: 90%; max-width: 800px; max-height: 80vh; }
 </style>
+
+<style>
+:root {
+  --glass-bg: rgba(0, 0, 0, 0.08);
+  --glass-border: rgba(0, 0, 0, 0.2);
+  --glass-blur: 15px;
+  --dot-color: rgba(0, 0, 0, 0.28);
+  --grain-contrast: 1.3;
+  --grain-brightness: 1.05;
+  --grain-opacity: 0.18;
+  --notify-success: rgba(76, 175, 80, 0.6);
+  --notify-error: rgba(244, 67, 54, 0.6);
+  --notify-info: rgba(33, 150, 243, 0.6);
+}
+
+/* Global grain overlay utility */
+.grain-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background-image: url('/src/assets/backgrounds/noise.svg');
+  background-size: 250px 250px;
+  opacity: var(--grain-opacity);
+}
+
+/* Ensure consistent rendering across devices */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Normalize glass effects across different displays */
+.glass-effect {
+  will-change: transform;
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Reduce brightness for consistent display across devices */
+body {
+  filter: brightness(0.85);
+}
+</style>
