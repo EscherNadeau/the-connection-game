@@ -176,10 +176,23 @@ function getGoalIndexForItem(item: GameItemType): number | null {
 }
 
 function startBoardPan(event: MouseEvent): void {
-  if (event.button === 1 || (event.button === 0 && event.ctrlKey)) {
-    isPanning.value = true
-    lastMousePos.value = { x: event.clientX, y: event.clientY }
+  // Don't start panning if clicking on an item (items handle their own interactions)
+  const target = event.target as HTMLElement
+  if (target.closest('.game-item')) {
+    // Items handle their own drag - don't start board pan
+        return
+      }
+
+  // Allow left-click (button 0) for panning when clicking empty space only
+  // Only start panning if not dragging an item
+  if (!isDraggingItem.value && !dragState.value.isDragging) {
+    // Left-click (button 0) now pans the board when clicking empty space
+    if (event.button === 0) {
+      isPanning.value = true
+      lastMousePos.value = { x: event.clientX, y: event.clientY }
       event.preventDefault()
+      event.stopPropagation()
+    }
   }
 }
 

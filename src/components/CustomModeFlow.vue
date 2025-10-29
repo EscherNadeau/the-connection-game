@@ -2,7 +2,9 @@
   <div class="show-builder">
     <!-- Header -->
     <div class="header">
-      <div class="header-left"></div>
+      <div class="header-left">
+        <button class="back-btn" @click="$emit('back')">← Back</button>
+      </div>
         <h1>🎬 Show Builder</h1>
       <div class="controls">
         <button class="play-btn" :class="{ 'tutorial-glow-song-info': showTutorial && tutorialStep === 5.15 }" @click="playPlaylist">▶️ Play Show</button>
@@ -27,8 +29,15 @@
             @click="editSong(song)"
           >
             <div class="song-icon">{{ song.icon }}</div>
-            <div class="song-name">{{ song.name }}</div>
-            <div class="song-stats">{{ song.goals.length }} goals, {{ song.settings.length }} settings</div>
+            <div class="song-info-wrapper">
+              <div class="song-name">{{ song.name }}</div>
+              <div class="song-stats">{{ getSongStats(song) }}</div>
+            </div>
+            <button 
+              class="delete-episode-btn" 
+              @click.stop="deleteEpisode(song)"
+              title="Delete Episode"
+            >×</button>
           </div>
           <button class="add-song-btn" :class="{ 'tutorial-glow-create-episode': showTutorial && tutorialStep === 5.7 }" @click="createNewSong">+ Create Episode</button>
         </div>
@@ -65,7 +74,7 @@
               <div class="song-details">
                 <div class="song-name">{{ song.name }}</div>
                 <div class="song-description">{{ song.description }}</div>
-                <div class="song-stats">{{ song.goals.length }} goals, {{ song.settings.length }} settings</div>
+                <div class="song-stats">{{ getSongStats(song) }}</div>
               </div>
             </div>
             <div class="song-actions">
@@ -200,18 +209,32 @@
                   >
                     <span class="goal-text-inline">{{ getGoalDisplayName(goal) }}</span>
                     <button @click.stop="removeGoal(index + 1)" class="remove-goal-btn-inline">×</button>
-                  </div>
                 </div>
               </div>
             </div>
+          </div>
 
             <!-- Anti Mode: Forbidden Items -->
             <div v-else-if="editingSong.modeType === 'anti'" class="anti-mode-goals">
+              <!-- Number of Forbidden Items - Most Important Setting -->
+              <div class="anti-count-setting">
+                <label class="anti-count-label">Avoid Connecting This Many Items</label>
+                <div class="anti-count-input-wrapper">
+                  <input 
+                    type="number" 
+                    v-model.number="editingSong.settings.avoidCount"
+                    min="1"
+                    class="anti-count-input"
+                  />
+                  <span class="anti-count-hint">How many items should players avoid connecting</span>
+                </div>
+              </div>
+              
               <div class="search-section" :class="{ 'tutorial-glow-song-info': showTutorial && tutorialStep === 5.11 }">
                 <SearchPanel :getType="() => 'Forbidden Item'" @select="addAntiGoal" />
                 </div>
               <div class="forbidden-items-section">
-                <label>🚫 Forbidden Items ({{ selectedAntiItems.length }})</label>
+                <label>High-Connection Items to Avoid ({{ selectedAntiItems.length }}) - Optional</label>
                 <div v-if="selectedAntiItems.length > 0" class="anti-items-list">
                     <div 
                       v-for="(item, index) in selectedAntiItems" 
@@ -233,7 +256,7 @@
                     </div>
                   </div>
                   <div v-else class="anti-items-empty">
-                  Search and click items to add them to the forbidden list
+                  (Optional) Add items with many connections (like movies with huge casts) to make the game harder
                 </div>
                   </div>
                 </div>
@@ -288,7 +311,7 @@
                   <div class="boolean-setting">
                     <div class="boolean-options">
                       <label class="boolean-option">
-                        <input 
+                      <input 
                           type="radio" 
                           :name="'hints-setting'"
                           :value="true"
@@ -297,7 +320,7 @@
                         <span>Enabled</span>
                       </label>
                       <label class="boolean-option">
-                        <input 
+                      <input 
                           type="radio" 
                           :name="'hints-setting'"
                           :value="false"
@@ -306,9 +329,41 @@
                         <span>Disabled</span>
                       </label>
                     </div>
+                    </div>
                   </div>
-                </div>
               </div>
+              
+              <!-- Path Mode Rules - Only for Goal Mode -->
+              <div v-if="editingSong && editingSong.modeType === 'goal'" class="setting-item">
+                <div class="setting-header">
+                  <div class="setting-icon">🎯</div>
+                  <div class="setting-name">Path Mode Rules</div>
+                </div>
+                <div class="setting-value">
+                  <div class="boolean-setting">
+                    <div class="boolean-options">
+                      <label class="boolean-option">
+                        <input 
+                          type="radio" 
+                          :name="'path-setting'"
+                          :value="true"
+                          v-model="editingSong.settings.pathModeEnabled"
+                        />
+                        <span>Enabled</span>
+                      </label>
+                      <label class="boolean-option">
+                        <input 
+                          type="radio" 
+                          :name="'path-setting'"
+                          :value="false"
+                          v-model="editingSong.settings.pathModeEnabled"
+                        />
+                        <span>Disabled</span>
+                      </label>
+                    </div>
+                  </div>
+                    </div>
+                  </div>
             </div>
           </div>
         </div>
@@ -483,7 +538,8 @@ export default {
         settings: {
           'time-limit': 'none',
           'cast-filter': 'mixed',
-          hints: true
+          hints: true,
+          pathModeEnabled: false
         },
         forbiddenItems: []
       }
@@ -547,6 +603,14 @@ export default {
         }
         this.editingSong.goals = this.getDefaultGoalsForMode(modeId)
         this.selectedAntiItems = []
+        
+        // Initialize Anti Mode specific settings
+        if (modeId === 'anti' && !this.editingSong.settings.avoidCount) {
+        if (!this.editingSong.settings) {
+          this.editingSong.settings = {}
+        }
+          this.editingSong.settings.avoidCount = 10
+        }
       }
     },
     getDefaultGoalsForMode(modeType) {
@@ -560,16 +624,68 @@ export default {
     },
     saveSong() {
       if (!this.editingSong) return
-        if (this.editingSong.modeType === 'anti') {
+      
+      // Validation based on mode type
+      let errorMessage = ''
+      
+      if (this.editingSong.modeType === 'goal') {
+        // Goal Mode needs both start and end goal
+        if (!this.editingSong.goals[0] || !this.editingSong.goals[1]) {
+          errorMessage = 'Goal Mode requires both a Start Goal and an End Goal to save.'
+        }
+      } else if (this.editingSong.modeType === 'hybrid') {
+        // Hybrid Mode needs main goal and at least one end goal
+        if (!this.editingSong.goals[0] || this.editingSong.goals.length < 2) {
+          errorMessage = 'Hybrid Mode requires a Main Goal and at least one End Goal to save.'
+        }
+      } else if (this.editingSong.modeType === 'knowledge') {
+        // Knowledge Mode needs start item
+        if (!this.editingSong.goals[0] || this.editingSong.goals[0] === '') {
+          errorMessage = 'Knowledge Mode requires a Start Item to save.'
+        }
+      } else if (this.editingSong.modeType === 'anti') {
+        // Anti Mode can have any number of forbidden items (no validation needed)
+      }
+      
+      if (errorMessage) {
+        alert(errorMessage)
+        return
+      }
+      
+      // Set forbidden items for Anti Mode
+      if (this.editingSong.modeType === 'anti') {
         this.editingSong.forbiddenItems = [...this.selectedAntiItems]
       }
-        const existingIndex = this.customSongs.findIndex(s => s.id === this.editingSong.id)
-        if (existingIndex > -1) {
-          this.customSongs[existingIndex] = { ...this.editingSong }
-        } else {
-          this.customSongs.push({ ...this.editingSong })
-        }
+      
+      const existingIndex = this.customSongs.findIndex(s => s.id === this.editingSong.id)
+      if (existingIndex > -1) {
+        this.customSongs[existingIndex] = { ...this.editingSong }
+      } else {
+        this.customSongs.push({ ...this.editingSong })
+      }
+      this.closeSongEditor()
+    },
+    deleteEpisode(song) {
+      if (!confirm(`Delete episode "${song.name}"?`)) {
+        return
+      }
+      
+      // Remove from custom songs
+      const index = this.customSongs.findIndex(s => s.id === song.id)
+      if (index > -1) {
+        this.customSongs.splice(index, 1)
+      }
+      
+      // Remove from playlist if it's there
+      const playlistIndex = this.playlist.findIndex(s => s.id === song.id)
+      if (playlistIndex > -1) {
+        this.playlist.splice(playlistIndex, 1)
+      }
+      
+      // Close editor if this episode is currently being edited
+      if (this.editingSong && this.editingSong.id === song.id) {
         this.closeSongEditor()
+      }
     },
     moveSongUp(index) {
       if (index > 0) {
@@ -744,6 +860,33 @@ export default {
     getGoalDisplayName(goal) {
       return ItemService.getDisplayName(goal)
     },
+    getSongStats(song) {
+      if (!song) return '0 goals, 0 settings'
+      
+      let goalCount = 0
+      if (song.modeType === 'goal') {
+        // Goal Mode: count non-empty goals (should be 2)
+        goalCount = song.goals ? song.goals.filter(g => g && g !== '').length : 0
+      } else if (song.modeType === 'hybrid') {
+        // Hybrid Mode: main goal + end goals
+        if (song.goals && song.goals.length > 0) {
+          goalCount = song.goals.filter(g => g && g !== '').length
+        }
+      } else if (song.modeType === 'knowledge') {
+        // Knowledge Mode: 1 start item
+        goalCount = (song.goals && song.goals[0] && song.goals[0] !== '') ? 1 : 0
+      } else if (song.modeType === 'anti') {
+        // Anti Mode: count forbidden items
+        goalCount = song.forbiddenItems ? song.forbiddenItems.length : 0
+        return goalCount === 1 ? `${goalCount} forbidden item` : `${goalCount} forbidden items`
+      }
+      
+      const settingsCount = song.settings ? Object.keys(song.settings).length : 0
+      const goalText = goalCount === 1 ? 'goal' : 'goals'
+      const settingText = settingsCount === 1 ? 'setting' : 'settings'
+      
+      return `${goalCount} ${goalText}, ${settingsCount} ${settingText}`
+    },
     importShowFromUrl(showData) {
       showData.id = `imported_${Date.now()}`
       showData.createdAt = new Date().toISOString()
@@ -790,11 +933,33 @@ export default {
   background: rgba(0, 0, 0, 0.3);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 10;
-  padding-left: 150px; /* Space for back button */
 }
 
 .header-left {
   width: 120px; /* Space for back button */
+  display: flex;
+  align-items: center;
+}
+
+.back-btn {
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .header h1 {
@@ -881,6 +1046,10 @@ export default {
   margin-bottom: 10px;
   cursor: grab;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
 }
 
 .custom-song:hover {
@@ -891,7 +1060,12 @@ export default {
 
 .song-icon {
   font-size: 1.5rem;
-  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.song-info-wrapper {
+  flex: 1;
+  min-width: 0;
 }
 
 .song-name {
@@ -911,6 +1085,36 @@ export default {
 .song-stats {
   font-size: 0.7rem;
   color: rgba(255, 255, 255, 0.5);
+}
+
+.delete-episode-btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 0, 0, 0.2);
+  border: 1px solid rgba(255, 0, 0, 0.4);
+  border-radius: 4px;
+  color: #ff6b6b;
+  cursor: pointer;
+  font-size: 1.2rem;
+  font-weight: bold;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+
+.delete-episode-btn:hover {
+  background: rgba(255, 0, 0, 0.4);
+  border-color: rgba(255, 0, 0, 0.6);
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.custom-song:hover .delete-episode-btn {
+  opacity: 1;
 }
 
 .add-song-btn {
@@ -1257,6 +1461,68 @@ export default {
   margin-bottom: 10px;
   font-weight: 600;
   color: #00ff88;
+}
+
+.forbidden-items-section label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #00ff88;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 10px;
+}
+
+/* Anti Mode Count Setting - Prominent at Top */
+.anti-count-setting {
+  margin-bottom: 25px;
+  padding: 20px;
+  background: rgba(0, 255, 136, 0.1);
+  border: 2px solid rgba(0, 255, 136, 0.3);
+  border-radius: 8px;
+}
+
+.anti-count-label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #00ff88;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 15px;
+}
+
+.anti-count-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.anti-count-input {
+  width: 120px;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid rgba(0, 255, 136, 0.4);
+  border-radius: 6px;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.anti-count-input:focus {
+  outline: none;
+  border-color: rgba(0, 255, 136, 0.7);
+  box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.2);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.anti-count-hint {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+  font-style: italic;
+  margin-left: 4px;
 }
 
 .anti-items-empty {
@@ -1793,6 +2059,32 @@ export default {
 .knowledge-items-text {
   color: white;
   font-size: 0.9rem;
+}
+
+.number-input {
+  width: 80px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: white;
+  font-size: 0.9rem;
+  text-align: center;
+  font-family: inherit;
+}
+
+.number-input:focus {
+  outline: none;
+  border-color: rgba(0, 255, 136, 0.5);
+  box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
+}
+
+.setting-hint {
+  display: block;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+  font-style: italic;
 }
 
 /* Hybrid Mode Styles */

@@ -213,19 +213,32 @@ class GoalModeService {
       
       const currentPair = this.getCurrentGoalPair()
       console.log('🎯 Current pair:', currentPair)
+      console.log('🎯 Current pair start:', currentPair?.start?.name, currentPair?.start?.source)
+      console.log('🎯 Current pair target:', currentPair?.target?.name, currentPair?.target?.source)
       
       if (!currentPair) {
         console.log('🎯 No current pair found, returning false')
         return false
       }
       
-      const startItem = this.gameItems.find((item) => item.name === currentPair.start.name)
-      const endItem = this.gameItems.find((item) => item.name === currentPair.target.name)
-      console.log('🎯 Start item:', startItem)
-      console.log('🎯 End item:', endItem)
+      // Find items by ID, not by name (goal items are in the goal chain)
+      const startItem = this.gameItems.find((item) => item.id === currentPair.start.id)
+      const endItem = this.gameItems.find((item) => item.id === currentPair.target.id)
+      console.log('🎯 Start item:', startItem?.name, startItem?.source)
+      console.log('🎯 End item:', endItem?.name, endItem?.source)
       
       if (!startItem || !endItem) {
         console.log('🎯 Missing start or end item, returning false')
+        return false
+      }
+      
+      // Verify these are actually the goal items (not random items)
+      const isGoal1 = startItem.source === 'goal1' || startItem.source === 'goal2'
+      const isGoal2 = endItem.source === 'goal1' || endItem.source === 'goal2'
+      console.log('🎯 Is goal1 and goal2?', isGoal1, isGoal2)
+      
+      if (!isGoal1 || !isGoal2) {
+        console.log('🎯 These are not the goal items, returning false')
         return false
       }
       

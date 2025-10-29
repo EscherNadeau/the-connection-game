@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Ref } from 'vue'
 import type { SearchResult, SearchPanelProps, SearchPanelEmits } from '../types/game'
 
@@ -61,7 +61,8 @@ const props = withDefaults(defineProps<SearchPanelProps>(), {
   modelValue: '',
   disabled: false,
   placeholder: 'Search for movies, TV shows, people...',
-  results: null
+  results: null,
+  autofocus: false
 })
 
 const emit = defineEmits<SearchPanelEmits>()
@@ -71,6 +72,7 @@ const searchQuery: Ref<string> = ref(props.modelValue || '')
 const searchResults: Ref<SearchResult[]> = ref([])
 const isSearching: Ref<boolean> = ref(false)
 const searchTimeout: Ref<ReturnType<typeof setTimeout> | null> = ref(null)
+const searchInput: Ref<HTMLInputElement | null> = ref(null)
 
 // Computed properties
 const shouldShowResults = computed(() => {
@@ -92,6 +94,15 @@ watch(() => props.modelValue, (newValue) => {
 // Lifecycle hooks
 onMounted(() => {
   searchQuery.value = props.modelValue || ''
+  
+  // Focus the input if autofocus is enabled
+  if (props.autofocus && !props.disabled) {
+    nextTick(() => {
+      if (searchInput.value) {
+        searchInput.value.focus()
+      }
+    })
+  }
 })
 
 onBeforeUnmount(() => {
@@ -102,6 +113,16 @@ onBeforeUnmount(() => {
 })
 
 // Methods
+function focusInput(): void {
+  if (!props.disabled) {
+    nextTick(() => {
+      searchInput.value?.focus()
+    })
+  }
+}
+
+defineExpose({ focusInput })
+
 const handleSearchInput = () => {
   emit('update:modelValue', searchQuery.value)
   

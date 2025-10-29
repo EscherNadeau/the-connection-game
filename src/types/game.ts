@@ -481,6 +481,7 @@ export interface SearchPanelProps {
   modelValue: string
   disabled?: boolean
   placeholder?: string
+  autofocus?: boolean
   getType: (result: any) => string
   results?: SearchResult[] | null
 }

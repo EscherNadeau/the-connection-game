@@ -3,17 +3,19 @@
     v-model="searchQuery"
     :results="searchResults"
     :disabled="false"
+    :autofocus="true"
     :getType="getDisplayType"
     :class="{ 'tutorial-glow': showTutorial && tutorialStep === 21 }"
     @input-keyup="handleSearchInput"
     @select="selectSearchResult"
     @clear="clearSearch"
     @image-error="handleImageError"
+    ref="searchPanelRef"
   />
 </template>
 
 <script setup lang="ts">
-import { ref, onBeforeUnmount } from 'vue'
+import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue'
 // @ts-ignore
 import SearchPanel from './SearchPanel.vue'
 // @ts-ignore
@@ -36,6 +38,7 @@ import type { GameSearchPanelProps, GameSearchPanelEmits, SearchResult, GameItem
 
 const props = defineProps<GameSearchPanelProps>()
 const emit = defineEmits<GameSearchPanelEmits>()
+const searchPanelRef = ref<any>(null)
 
 // Reactive data
 const searchQuery = ref<string>('')
@@ -43,6 +46,13 @@ const searchResults = ref<SearchResult[]>([])
 const isSearching = ref<boolean>(false)
 const searchTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const hintSourceItem = ref<GameItem | null>(null)
+onMounted(() => {
+  nextTick(() => {
+    try {
+      searchPanelRef.value?.focusInput?.()
+    } catch {}
+  })
+})
 
 // Methods
 function handleSearchInput(): void {
