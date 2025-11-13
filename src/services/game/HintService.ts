@@ -1,5 +1,6 @@
 import tmdbCache from '../cache/tmdbCache.ts'
 import { useFiltersStore } from '@store/filters.store.ts'
+import { debug } from '../ui/log.ts'
 
 function buildImageUrl(path) {
   return path ? `https://image.tmdb.org/t/p/w200${path}` : null
@@ -99,7 +100,8 @@ class HintService {
       }
 
       return []
-    } catch (_) {
+    } catch (err) {
+      debug('Failed to get hint suggestions', { error: err })
       return []
     }
   }

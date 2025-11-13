@@ -9,7 +9,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-// @ts-ignore
 import notify from '../../services/ui/NotifyService.ts'
 
 // Reactive state

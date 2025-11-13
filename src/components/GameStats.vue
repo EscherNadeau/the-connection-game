@@ -100,12 +100,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-// @ts-ignore
 import { useGameStateStore } from '../store/gameState.store.ts'
 import { storeToRefs } from 'pinia'
 import type { GameStatsProps } from '../types/game'
 
-// @ts-ignore
 const gameStateStore = useGameStateStore()
 const { gameItems, connections, timerEnabled, timerRemaining } = storeToRefs(gameStateStore)
 

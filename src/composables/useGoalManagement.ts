@@ -1,9 +1,14 @@
 import { ref, type Ref } from 'vue'
-// @ts-ignore
-import { useGameStateStore } from '@store/gameState.store.ts'
-// @ts-ignore
-import { log } from '@/services/ui/log.ts'
+import { useGameStateStore } from '@store/gameState.store'
+import { info, debug, warn, error as logError } from '@/services/ui/log'
+import { shortestPathNodes } from '@/utils/graph'
 import type { GameItem, Connection, GameOptions, GameMode, GoalData, GoalAdvancementData, ResultModal, GameBoard, StartingItem } from '@/types/game'
+
+interface ModeService {
+  initialize: (options: unknown) => void
+  updateGameState: (items: GameItem[], connections: Connection[]) => void
+  checkWinCondition: (items: GameItem[], connections: Connection[]) => boolean
+}
 
 export function useGoalManagement() {
   const highlightPathIds: Ref<string[]> = ref([])
@@ -32,10 +37,13 @@ export function useGoalManagement() {
     goalData: GoalData, 
     gameOptions: GameOptions, 
     roomCode: string | undefined,
-    handlePvPGoalCompletion: (goalData: GoalData, gameOptions: GameOptions, roomCode?: string) => boolean,
-    resultModal: ResultModal
+    handlePvPGoalCompletion?: (goalData: GoalData, gameOptions: GameOptions, roomCode?: string) => boolean,
+    resultModal?: ResultModal
   ): void {
-    log('info', '🎉 Goal completed!', goalData)
+      info( { message: '🎉 Goal completed!', data: goalData })
+    
+    // Use provided resultModal or create a ref-like wrapper
+    const modal = resultModal || { value: { visible: false, type: 'win', title: '', subtitle: '', stats: null } }
     
     if (goalData?.lost) {
       const unconnected = goalData?.stats?.unconnectedCount || 0
@@ -48,7 +56,7 @@ export function useGoalManagement() {
               ? 'Nice attempt!'
               : 'Quick round!'
       
-      resultModal.value = {
+      modal.value = {
         visible: true,
         type: 'lose',
         title: 'You Lose',
@@ -60,25 +68,32 @@ export function useGoalManagement() {
     }
     
     if (goalData && goalData.mode && goalData.mode !== 'anti' && goalData.mode !== 'zen') {
-      // Check if this is a PvP game and handle completion
-      if (handlePvPGoalCompletion(goalData, gameOptions, roomCode)) {
+      // Check if this is a PvP game and handle completion (if handler provided)
+      if (handlePvPGoalCompletion && handlePvPGoalCompletion(goalData, gameOptions, roomCode)) {
         // PvP completion was handled, continue with normal win flow
       }
       
-      resultModal.value = {
-        visible: true,
-        type: 'win',
-        title: 'You Win',
-        subtitle: goalData?.message || 'Goal completed!',
-        stats: Object.assign({}, goalData?.stats || {}, {
+      // Update modal properties directly to maintain reactivity
+      if (modal && modal.value) {
+        modal.value.visible = true
+        modal.value.type = 'win'
+        modal.value.title = 'You Win'
+        modal.value.subtitle = goalData?.message || 'Goal completed!'
+        modal.value.stats = Object.assign({}, goalData?.stats || {}, {
           pathLength: goalData?.pathLength,
-        }),
+        })
+        debug('Modal set to visible', { visible: modal.value })
+      } else {
+        warn('Modal not available - cannot show win screen!')
       }
       
-      // Cache path for Show Path flow; do not show bottom bar until Show Path pressed
+      // Cache path for Show Path flow; do not show bottom bar or path until Show Path pressed
+      debug('Saving path IDs from goalData', { pathIds: goalData?.pathIds })
       savedWinPathIds.value = Array.isArray(goalData?.pathIds) ? goalData.pathIds : []
-      highlightPathIds.value = savedWinPathIds.value
-      bottomBarVisible.value = false
+      debug('Saved path IDs', { count: savedWinPathIds.value.length })
+      // DO NOT set highlightPathIds here - only save it. Path will be shown when user clicks "Show Path"
+      highlightPathIds.value = [] // Clear any existing highlights
+      bottomBarVisible.value = false // Hide bottom bar until user clicks "Show Path"
       return
     }
   }
@@ -93,7 +108,7 @@ export function useGoalManagement() {
     addNewStartingItems: (nextGoal: GoalData, gameBoard: GameBoard, gameOptions: GameOptions) => void,
     showGoalAdvancementNotification: (goalData: GoalAdvancementData) => void
   ): void {
-    log('info', '🎯 Goal advanced!', goalData)
+    info('🎯 Goal advanced!', goalData)
     
     // Update the current goal index in gameOptions
     if (gameOptions && goalData.newGoalIndex !== undefined) {
@@ -102,7 +117,9 @@ export function useGoalManagement() {
       // Update game state store for multiplayer sync
       try {
         gs.updateGameOptions(gameOptions)
-      } catch (_) {}
+      } catch (err) {
+        warn('Failed to update game options in store', { error: err })
+      }
       
       // Add new starting items for the next goal
       if (goalData.newGoal) {
@@ -130,7 +147,7 @@ export function useGoalManagement() {
       gameBoard.addItem(item)
     }
 
-    log('info', '🎯 Added new starting items for next goal:', newItems)
+    info('🎯 Added new starting items for next goal', newItems)
   }
 
   /**
@@ -219,7 +236,7 @@ export function useGoalManagement() {
         break
 
       default:
-        log('warn', 'Unknown game type for goal advancement:', gameType)
+        warn( { message: 'Unknown game type for goal advancement', data: gameType })
     }
 
     return items
@@ -240,90 +257,123 @@ export function useGoalManagement() {
 
     // You can implement a notification system here
     // For now, just log it
-    log('info', '🎯 Goal advancement notification:', notification)
+    info('🎯 Goal advancement notification', notification)
   }
 
   /**
    * Handle goal checking
    */
   async function handleCheckGoals(connections: Connection[], gameOptionsParam: GameOptions, gameItemsParam: GameItem[]): Promise<any> {
-    log('info', '🎯 Checking goals with connections:', connections.length)
+    info('🎯 Checking goals', { connections: connections.length })
     
     // Get the current game mode service
     const gameMode = gameOptionsParam?.mode || 'hybrid'
     
     try {
       // Import the appropriate mode service
-      let modeService: any = null
+      type ModeServiceModule = { default: ModeService }
+      let modeService: ModeServiceModule | null = null
       
       switch (gameMode) {
         case 'hybrid':
-          // @ts-ignore
-          modeService = await import('../modes/HybridModeService.ts')
+          modeService = await import('../modes/HybridModeService')
           break
         case 'goal':
-          // @ts-ignore
-          modeService = await import('../modes/GoalModeService.ts')
+          modeService = await import('../modes/GoalModeService')
           break
         case 'knowledge':
-          // @ts-ignore
-          modeService = await import('../modes/KnowledgeModeService.ts')
+          modeService = await import('../modes/KnowledgeModeService')
           break
         case 'anti':
-          // @ts-ignore
-          modeService = await import('../modes/AntiModeService.ts')
+          modeService = await import('../modes/AntiModeService')
           break
         case 'zen':
-          // @ts-ignore
-          modeService = await import('../modes/ZenModeService.ts')
+          modeService = await import('../modes/ZenModeService')
           break
         default:
-          log('warn', 'Unknown game mode:', gameMode)
+          warn( { message: 'Unknown game mode', data: gameMode })
           return
       }
       
       if (modeService && modeService.default) {
-        const service = modeService.default
+        const service: ModeService = modeService.default
         
-        console.log('🎯 Mode service loaded:', gameMode)
-        console.log('🎯 Game items:', gameItemsParam.length)
-        console.log('🎯 Connections:', connections.length)
+        debug('Mode service loaded', { gameMode, itemCount: gameItemsParam.length, connectionCount: connections.length })
         
         // For Goal Mode: Extract goal chain from starting items
-        let goalChain: any[] = []
+        let goalChain: GameItem[] = []
         if (gameMode === 'goal' && gameOptionsParam.startingItems) {
           // Extract the goal items from starting items
-          const goalItems = gameItemsParam.filter(item => 
+          const goalItems = gameItemsParam.filter((item: GameItem & { source?: string }) => 
             item.isStartingItem && (item.source === 'goal1' || item.source === 'goal2')
           )
-          console.log('🎯 Goal items found:', goalItems.length)
+          debug('Goal items found', { count: goalItems.length })
           goalChain = goalItems
           
           // Initialize the service with goal chain
           if (service.initialize) {
-            console.log('🎯 Initializing GoalModeService with goal chain')
+            debug('Initializing GoalModeService with goal chain')
             service.initialize(gameOptionsParam, gameItemsParam, connections, goalChain)
           }
         }
         
         // Update the service with current game state
         if (service.updateGameState) {
-          console.log('🎯 Updating game state in service')
+          debug('Updating game state in service')
           service.updateGameState(gameItemsParam, connections)
         }
         
         // Check win condition
         if (service.checkWinCondition) {
-          console.log('🎯 Checking win condition...')
+          debug('Checking win condition')
           const hasWon = await service.checkWinCondition()
-          console.log('🎯 Win condition result:', hasWon)
+          debug('Win condition result', { hasWon })
           
           if (hasWon) {
-            log('info', '🎉 WIN CONDITION MET!')
+            info( '🎉 WIN CONDITION MET!')
             
             // Get win message and progress
             const winMessage = service.getWinMessage ? service.getWinMessage() : 'You won!'
             const progress = service.getProgressDisplay ? service.getProgressDisplay() : ''
+            
+            // Calculate path IDs for Goal Mode
+            let pathIds: string[] = []
+            if (gameMode === 'goal') {
+              try {
+                // Get goal items
+            const goalItems = gameItemsParam.filter((item: GameItem & { source?: string }) => 
+              item.isStartingItem && (item.source === 'goal1' || item.source === 'goal2')
+            )
+                debug('Goal items found for path calculation', { count: goalItems.length })
+                if (goalItems.length >= 2) {
+                  const startItem = goalItems.find((item: any) => item.source === 'goal1')
+                  const endItem = goalItems.find((item: any) => item.source === 'goal2')
+                  debug('Path calculation items', { 
+                    startId: startItem?.id, 
+                    startName: startItem?.name || startItem?.title,
+                    endId: endItem?.id,
+                    endName: endItem?.name || endItem?.title,
+                    connectionCount: connections.length
+                  })
+                  
+                  if (startItem && endItem && startItem.id && endItem.id) {
+                    // Calculate the shortest path between goal items
+                    pathIds = shortestPathNodes(startItem.id, endItem.id, connections)
+                    debug('Calculated path IDs', { count: pathIds.length, pathIds })
+                    
+                    if (pathIds.length === 0) {
+                      warn('No path found between goal items!')
+                    } else {
+                      info( { message: '🎯 Calculated path IDs', data: { count: pathIds.length, pathIds } })
+                    }
+                  } else {
+                    warn('Missing start or end item for path calculation')
+                  }
+                }
+              } catch (error) {
+                logError( { message: 'Failed to calculate path IDs', data: error })
+              }
+            }
             
             // Return win data with mode to trigger win modal
             return {
@@ -332,6 +382,7 @@ export function useGoalManagement() {
               message: winMessage,
               progress: progress,
               connections: connections,
+              pathIds: pathIds, // Add path IDs for Show Path functionality
               stats: {
                 connections: connections.length,
                 items: gameItemsParam.length
@@ -341,32 +392,44 @@ export function useGoalManagement() {
             // Update progress display
             const progress = service.getProgressDisplay ? service.getProgressDisplay() : ''
             if (progress) {
-              log('info', 'Progress:', progress)
+              info( { message: 'Progress', data: progress })
             }
             return null
           }
         } else {
-          console.log('🎯 No checkWinCondition method found on service')
+          warn('No checkWinCondition method found on service', { gameMode })
         }
       }
     } catch (error) {
-      log('error', 'Error checking goals:', error)
+      logError( { message: 'Error checking goals', data: error })
     }
   }
 
   /**
-   * Show path functionality
+   * Show path functionality - works like Free Play but with path shown
    */
-  function onShowPath(resultModal: ResultModal): void {
+  function onShowPath(resultModal: ResultModal, gameMode: GameMode | null): void {
     try {
       resultModal.value.visible = false
       bottomBarVisible.value = true
-      // Reapply saved path highlight
+      
+      // Switch to Zen mode (no goal checking) - just like Free Play
+      if (gameMode && gameMode.id !== 'zen') {
+        gameMode.id = 'zen'
+      }
+      
+      // Show the saved path
+      debug('Show Path clicked', { savedPathCount: savedWinPathIds.value.length })
       if (Array.isArray(savedWinPathIds.value) && savedWinPathIds.value.length > 0) {
         highlightPathIds.value = [...savedWinPathIds.value]
+        debug('Applied path highlight', { itemCount: highlightPathIds.value.length })
+      } else {
+        warn('No saved path IDs found!')
       }
+      
+      info( '✅ Entered Show Path mode (Free Play with path)')
     } catch (error) {
-      log('error', 'Failed to show path:', error)
+      logError( { message: 'Failed to show path', data: error })
     }
   }
 
@@ -381,8 +444,12 @@ export function useGoalManagement() {
    * Re-show path functionality
    */
   function reShowPath(): void {
+    debug('ReShowPath called', { savedPathCount: savedWinPathIds.value.length })
     if (Array.isArray(savedWinPathIds.value) && savedWinPathIds.value.length > 0) {
       highlightPathIds.value = [...savedWinPathIds.value]
+      debug('Re-applied path highlight', { itemCount: highlightPathIds.value.length })
+    } else {
+      warn('ReShowPath: No saved path IDs found!')
     }
   }
 
@@ -392,19 +459,17 @@ export function useGoalManagement() {
   function enterZenFreePlay(resultModal: ResultModal, gameMode: GameMode | null, gameBoard: GameBoard): void {
     try {
       resultModal.value.visible = false
-      // Emit mode change event if needed
-      // this.$emit('mode-changed', zenMode)
+      // Switch to Zen mode (no goal checking)
       if (gameMode && gameMode.id !== 'zen') {
         gameMode.id = 'zen'
       }
-      if (gameBoard && typeof gameBoard.checkGoalCompletion === 'function') {
-        gameBoard.checkGoalCompletion()
-      }
+      // Don't call checkGoalCompletion - we're entering free play, no more goals
       // Show bottom bar and clear highlight when entering Free Play from modal
       bottomBarVisible.value = true
       highlightPathIds.value = []
+      info( '✅ Entered Zen Free Play mode')
     } catch (error) {
-      log('error', 'Failed to enter zen free play:', error)
+      logError( { message: 'Failed to enter zen free play', data: error })
     }
   }
 

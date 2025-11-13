@@ -1,6 +1,7 @@
 // Moved RuleEnforcementService here from ../../services/RuleEnforcementService.js
 import { GAME_RULES, CONNECTION_RULES, PATH_MODE_RULES } from '../../rules/gameRules.ts'
 import { getModeRules } from '../../modes/gameModes.ts'
+import { debug } from '../../services/ui/log.ts'
 import {
   buildAdjacency,
   pathExists,
@@ -29,7 +30,10 @@ export class RuleEnforcementService {
         dynamicRuleSet.add(GAME_RULES.LINEAR_PATH_ONLY)
         dynamicRuleSet.add(GAME_RULES.NO_BACKTRACE)
       }
-    } catch (_) {}
+    } catch (err) {
+      // Failed to check path mode - continue without path rules
+      debug('Failed to check path mode in rules', { error: err })
+    }
     const modeRules = Array.from(dynamicRuleSet)
     const checks = [
       this.checkAntiRules(gameMode),

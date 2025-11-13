@@ -1,11 +1,7 @@
 import { ref, type Ref } from 'vue'
-// @ts-ignore
 import { useGameStateStore } from '@store/gameState.store.ts'
-// @ts-ignore
-import { log } from '@/services/ui/log.ts'
-// @ts-ignore
+import { info, error as logError } from '@/services/ui/log.ts'
 import { normalizeMediaType } from '@/utils/constants.ts'
-// @ts-ignore
 import config from '@/config/env'
 import type { GameItem, Connection, GameOptions, GameMode, GameBoard, MoveData } from '@/types/game'
 
@@ -98,7 +94,7 @@ export function useCollaboration() {
     gs.setRoomCode(roomCode.value)
     gs.connectCollab(config.wsUrl)
     
-    log('info', '🔗 Collaboration initialized with room:', roomCode.value)
+    info( '🔗 Collaboration initialized with room:', roomCode.value)
   }
 
   /**
@@ -135,7 +131,7 @@ export function useCollaboration() {
         connections: gameBoard?.connections || []
       }
       gs.sendCollab('action', payload)
-      log('info', '🎮 Game start broadcasted')
+      info( '🎮 Game start broadcasted')
     }
   }
 
@@ -174,7 +170,7 @@ export function useCollaboration() {
         gs.sendCollab('action', { kind: 'add', item })
       }
     } catch (error) {
-      log('error', 'Failed to broadcast item add:', error)
+      logError( 'Failed to broadcast item add:', error)
     }
   }
 
@@ -185,10 +181,10 @@ export function useCollaboration() {
     try {
       if (gs.collabConnected) {
         gs.sendCollab('action', { kind: 'connect', from, to })
-        log('info', '🔗 Connection broadcasted')
+        info( '🔗 Connection broadcasted')
       }
     } catch (error) {
-      log('error', 'Failed to broadcast connection:', error)
+      logError( 'Failed to broadcast connection:', error)
     }
   }
 
@@ -199,10 +195,10 @@ export function useCollaboration() {
     try {
       if (gs.collabConnected) {
         gs.sendCollab('action', { kind: 'end_game' })
-        log('info', '🏁 End game action sent')
+        info( '🏁 End game action sent')
       }
     } catch (error) {
-      log('error', 'Failed to send end game:', error)
+      logError( 'Failed to send end game:', error)
     }
   }
 
@@ -212,9 +208,9 @@ export function useCollaboration() {
   function disconnectCollab(): void {
     try {
       gs.disconnectCollab()
-      log('info', '🔌 Collaboration disconnected')
+      info( '🔌 Collaboration disconnected')
     } catch (error) {
-      log('error', 'Failed to disconnect collaboration:', error)
+      logError( 'Failed to disconnect collaboration:', error)
     }
   }
 
@@ -225,9 +221,9 @@ export function useCollaboration() {
     try {
       gs.setRoomCodeFromHash()
       roomCode.value = gs.roomCode || gameOptions?.roomCode || null
-      log('info', '🏠 Room code set:', roomCode.value)
+      info( '🏠 Room code set:', roomCode.value)
     } catch (error) {
-      log('error', 'Failed to set room code:', error)
+      logError( 'Failed to set room code:', error)
     }
   }
 

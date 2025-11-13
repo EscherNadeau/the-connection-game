@@ -181,10 +181,10 @@
                   <div class="goal-poster" :class="{ 'tutorial-glow': showTutorial && tutorialStep === 9 }">
                     <div class="card-image">
                       <div v-if="mode.id === 'goal' && selectedGoals.goal1" class="card-icon">
-                        <img :src="getImageUrl(selectedGoals.goal1)" :alt="selectedGoals.goal1.title || selectedGoals.goal1.name" />
+                        <img :src="getImageUrl(selectedGoals.goal1) || ''" :alt="(selectedGoals.goal1?.title || selectedGoals.goal1?.name) || ''" />
                     </div>
                       <div v-else-if="mode.id === 'knowledge' && selectedGoals.knowledge" class="card-icon">
-                        <img :src="getImageUrl(selectedGoals.knowledge)" :alt="selectedGoals.knowledge.name || 'Starting Item'" />
+                        <img :src="getImageUrl(selectedGoals.knowledge) || ''" :alt="(selectedGoals.knowledge?.name) || 'Starting Item'" />
                   </div>
                       <div v-else class="card-icon">{{ mode.id === 'goal' ? '🎯' : '🧠' }}</div>
                     </div>
@@ -205,7 +205,7 @@
                   <div v-if="mode.id === 'goal'" class="goal-poster" :class="{ 'tutorial-glow': showTutorial && tutorialStep === 9 }">
                     <div class="card-image">
                       <div v-if="selectedGoals.goal2" class="card-icon">
-                        <img :src="getImageUrl(selectedGoals.goal2)" :alt="selectedGoals.goal2.title || selectedGoals.goal2.name" />
+                        <img :src="getImageUrl(selectedGoals.goal2) || ''" :alt="(selectedGoals.goal2?.title || selectedGoals.goal2?.name) || ''" />
                 </div>
                       <div v-else class="card-icon">🎯</div>
               </div>
@@ -501,7 +501,7 @@
                 <div class="goal-poster compact-main">
                   <div class="card-image">
                     <div v-if="selectedGoals.hybridStarting" class="card-icon">
-                      <img :src="getImageUrl(selectedGoals.hybridStarting)" :alt="selectedGoals.hybridStarting.name || 'Starting Item'" />
+                      <img :src="getImageUrl(selectedGoals.hybridStarting) || ''" :alt="(selectedGoals.hybridStarting?.name) || 'Starting Item'" />
                     </div>
                     <div v-else class="card-icon">🔗</div>
                   </div>
@@ -530,8 +530,8 @@
                     <div class="goal-image">
                       <img 
                         v-if="goal && getImageUrl(goal)" 
-                        :src="getImageUrl(goal)" 
-                        :alt="goal.name || `Goal ${index + 1}`" 
+                        :src="getImageUrl(goal) || ''" 
+                        :alt="(goal?.name) || `Goal ${index + 1}`" 
                       />
                       <div v-else class="goal-placeholder">
                         {{ goal ? '🎬' : '🎯' }}
@@ -543,7 +543,7 @@
                     </div>
                     <div class="goal-random-controls">
                   <button
-                        @click="randomizeSingleGoal(index)"
+                        @click="randomizeSingleGoal(Number(index), '')"
                         class="goal-random-btn"
                     :disabled="isLoadingRandom"
                         title="Full random for this goal"
@@ -561,13 +561,13 @@
                           <span class="menu-arrow">▼</span>
                         </button>
                         <div class="goal-random-dropdown" v-show="showGoalRandomMenus[index]">
-                          <button @click="randomizeSingleGoal(index, 'movie')" class="goal-random-item">
+                          <button @click="randomizeSingleGoal(Number(index), 'movie')" class="goal-random-item">
                             🎬 Movie
                           </button>
-                          <button @click="randomizeSingleGoal(index, 'person')" class="goal-random-item">
+                          <button @click="randomizeSingleGoal(Number(index), 'person')" class="goal-random-item">
                             🎭 Actor
                           </button>
-                          <button @click="randomizeSingleGoal(index, 'tv')" class="goal-random-item">
+                          <button @click="randomizeSingleGoal(Number(index), 'tv')" class="goal-random-item">
                             📺 TV Show
                           </button>
                         </div>
@@ -755,6 +755,7 @@
           <!-- Custom Mode Panel (when advanced is open) -->
           <div v-show="showAdvanced" class="custom-mode-panel">
           <CustomModePanel 
+            background-image=""
             :open-browser-on-load="false"
             :show-tutorial="showTutorial || false"
             :tutorial-step="tutorialStep || 0"
@@ -814,21 +815,14 @@
 </template>
 
 <script setup lang="ts">
-// @ts-nocheck - Suppress remaining TypeScript warnings for production deployment
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-// @ts-ignore
-import { log } from '../services/ui/log.ts'
-// @ts-ignore
-import tmdbCache from '../services/cache/tmdbCache.ts'
-// @ts-ignore
-import { getGameMode, getModeRules } from '../modes/gameModes.ts'
-// @ts-ignore
-import { useFiltersStore } from '@store/filters.store.ts'
-// @ts-ignore
-import gameEngine from '../gameEngine.ts'
+import { debug, info, warn, error as logError } from '../services/ui/log'
+import tmdbCache from '../services/cache/tmdbCache'
+import { getGameMode, getModeRules } from '../modes/gameModes'
+import { useFiltersStore } from '@store/filters.store'
+import gameEngine from '../gameEngine'
 import CustomModePanel from './CustomModePanel.vue'
-// @ts-ignore
-import ItemService from '../services/ItemService.ts'
+import ItemService from '../services/ItemService'
 import type { SettingsScreenProps, SettingsScreenEmits } from '../types/game'
 
 const props = defineProps<SettingsScreenProps>()
@@ -841,23 +835,42 @@ const updateRoomCode = () => {
     const hash = window.location.hash || ''
     const m = hash.match(/room=([A-Za-z0-9_-]+)/)
     roomCode.value = m ? (m[1] || '') : (sessionStorage.getItem('lastRoomCode') || '')
-  } catch (_) {
+  } catch (err) {
+    debug('Failed to update room code from hash', { error: err })
     roomCode.value = ''
   }
 }
-    // @ts-ignore - Suppress unused variable warnings for production
     const buildShareUrl = async (code: string): Promise<string> => {
       try {
         const resp = await fetch(`http://${location.hostname}:3011/api/hostinfo`, { cache: 'no-store' })
         const info = resp.ok ? await resp.json() : { preferred: null }
-        if (info && info.preferred) { try { localStorage.setItem('preferredHostIp', info.preferred) } catch (_) {} }
-        const fallback = (() => { try { return localStorage.getItem('preferredHostIp') } catch (_) { return null } })()
+        if (info && info.preferred) { 
+          try { 
+            localStorage.setItem('preferredHostIp', info.preferred) 
+          } catch (err) {
+            // localStorage may be unavailable - continue without persistence
+          }
+        }
+        const fallback = (() => { 
+          try { 
+            return localStorage.getItem('preferredHostIp') 
+          } catch (err) { 
+            return null 
+          } 
+        })()
         const host = info.preferred || fallback || location.hostname
         const port = location.port || '3000'
         const base = `${location.protocol}//${host}${port ? `:${port}` : ''}`
         return `${base}/#room=${encodeURIComponent(code)}`
-      } catch (_) {
-        const host = (() => { try { return localStorage.getItem('preferredHostIp') || location.hostname } catch (_) { return location.hostname } })()
+      } catch (err) {
+        warn('Failed to build share URL, using fallback', { error: err, code })
+        const host = (() => { 
+          try { 
+            return localStorage.getItem('preferredHostIp') || location.hostname 
+          } catch (e) { 
+            return location.hostname 
+          } 
+        })()
         const port = location.port || '3000'
         const base = `${location.protocol}//${host}${port ? `:${port}` : ''}`
         return `${base}/#room=${encodeURIComponent(code)}`
@@ -927,7 +940,12 @@ const updateRoomCode = () => {
     // Helpers
     const createLocalId = (prefix: string): string => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`
     const buildKey = (itm: any): string => {
-      try { return `${(itm && (itm.media_type || itm.type)) || ''}|${itm && itm.id || ''}` } catch (_) { return '' }
+      try { 
+        return `${(itm && (itm.media_type || itm.type)) || ''}|${itm && itm.id || ''}` 
+      } catch (err) {
+        debug('Failed to build key for item', { error: err })
+        return '' 
+      }
     }
     const getRandomByType = async (type: string): Promise<any> => {
       const t = type === 'actor' ? 'person' : type
@@ -962,14 +980,14 @@ const updateRoomCode = () => {
 
     // Curated popular pools (built on first click, kept until reload)
     const curatedPools = {
-      movie: ref([]),
-      person: ref([]),
-      tv: ref([]),
+      movie: ref<any[]>([]),
+      person: ref<any[]>([]),
+      tv: ref<any[]>([]),
     }
 
-    const ensureCuratedPool = async (type) => {
+    const ensureCuratedPool = async (type: string) => {
       const t = type === 'actor' ? 'person' : type
-      const poolRef = curatedPools[t]
+      const poolRef = curatedPools[t as keyof typeof curatedPools]
       if (!poolRef || (Array.isArray(poolRef.value) && poolRef.value.length > 0)) return
 
       // Fetch several popular pages once, then filter/dedupe to a quality pool
@@ -996,29 +1014,30 @@ const updateRoomCode = () => {
 
       // Quality filter thresholds
       const preferUS = true // Default: focus on American items for normal play
-      const isUS = (it, tt) => {
+      const isUS = (it: any, tt: string) => {
         try {
           if (tt === 'movie' || tt === 'tv') {
             const origin = Array.isArray(it.origin_country) ? it.origin_country : []
             const prod = Array.isArray(it.production_countries) ? it.production_countries : []
-            const prodHasUS = prod.some((c) => (c && ((c.iso_3166_1 === 'US') || c.name === 'United States' || c.name === 'USA')))
+              const prodHasUS = prod.some((c: any) => (c && ((c.iso_3166_1 === 'US') || c.name === 'United States' || c.name === 'USA')))
             return origin.includes('US') || prodHasUS || (it.original_language === 'en')
           } else {
             // person
             const known = Array.isArray(it.known_for) ? it.known_for : []
-            return known.some((k) => {
+            return known.some((k: any) => {
               const origin = Array.isArray(k?.origin_country) ? k.origin_country : []
               const prod = Array.isArray(k?.production_countries) ? k.production_countries : []
-              const prodHasUS = prod.some((c) => (c && ((c.iso_3166_1 === 'US') || c.name === 'United States' || c.name === 'USA')))
+              const prodHasUS = prod.some((c: any) => (c && ((c.iso_3166_1 === 'US') || c.name === 'United States' || c.name === 'USA')))
               return origin.includes('US') || prodHasUS || (k?.original_language === 'en')
             })
           }
-        } catch (_) {
+        } catch (err) {
+          debug('Failed to check if item is US-based', { error: err })
           return false
         }
       }
 
-      const isGood = (it) => {
+      const isGood = (it: any) => {
         const popularity = Number(it.popularity || 0)
         const voteCount = Number(it.vote_count || it.known_for_department ? 0 : it.voteCount || 0)
         if (t === 'movie') return popularity >= 10 && (it.vote_count || 0) >= 300
@@ -1038,9 +1057,9 @@ const updateRoomCode = () => {
       poolRef.value = scored
     }
 
-    const pickFromCurated = (type, excludeSet, recentSet) => {
+    const pickFromCurated = (type: string, excludeSet: Set<string>, recentSet: Set<string>) => {
       const t = type === 'actor' ? 'person' : type
-      const pool = (curatedPools[t] && curatedPools[t].value) || []
+      const pool = (curatedPools[t as keyof typeof curatedPools] && curatedPools[t as keyof typeof curatedPools].value) || []
       if (!pool.length) return null
       // Try several attempts to avoid repeats
       for (let i = 0; i < 15; i++) {
@@ -1077,10 +1096,8 @@ const updateRoomCode = () => {
 
     // Pick a random background image
     const randomIndex = Math.floor(Math.random() * backgroundImages.value.length)
-    // @ts-ignore - Suppress unused variable warnings for production
     const currentImageIndex = ref(randomIndex)
-    // @ts-ignore - Suppress undefined object warnings for production
-    const currentDecade = ref(backgroundImages.value[randomIndex].decade)
+    const currentDecade = ref(backgroundImages.value[randomIndex]?.decade || '')
 
     // Mode-specific settings
     const modeSettings = ref<{
@@ -1155,7 +1172,7 @@ const updateRoomCode = () => {
 
     // Get random items from TMDB
     // Menu toggle functions
-    const toggleMenu = (menuNumber) => {
+    const toggleMenu = (menuNumber: number) => {
       if (menuNumber === 1) {
         showMenu1.value = !showMenu1.value;
         showMenu2.value = false; // Close other menu
@@ -1165,7 +1182,7 @@ const updateRoomCode = () => {
       }
     };
 
-    const selectRandom = async (type, goalKey) => {
+    const selectRandom = async (type: string, goalKey: string) => {
       // Close the menu
       if (goalKey === 'goal1') showMenu1.value = false;
       if (goalKey === 'goal2') showMenu2.value = false;
@@ -1179,16 +1196,18 @@ const updateRoomCode = () => {
       await getRandomItems(type, itemCount, goalKey);
     };
 
-    const selectRandomType = async (goalKey) => {
+    const selectRandomType = async (goalKey: string) => {
       // Randomly select type for the goal (like prefill functions)
       const types = ['movie', 'person', 'tv']
       const randomType = types[Math.floor(Math.random() * types.length)]
       
       // Call the existing random function with random type
-      await getRandomItems(randomType, 1, goalKey);
+      if (randomType) {
+        await getRandomItems(randomType, 1, goalKey);
+      }
     };
 
-    const toggleGoalRandomMenu = (goalIndex) => {
+    const toggleGoalRandomMenu = (goalIndex: number) => {
       // Close all other goal menus
       Object.keys(showGoalRandomMenus.value).forEach(key => {
         if (parseInt(key) !== goalIndex) {
@@ -1200,7 +1219,7 @@ const updateRoomCode = () => {
       showGoalRandomMenus.value[goalIndex] = !showGoalRandomMenus.value[goalIndex];
     };
 
-    const randomizeSingleGoal = async (goalIndex, type) => {
+    const randomizeSingleGoal = async (goalIndex: number, type: string) => {
       // Close the menu
       showGoalRandomMenus.value[goalIndex] = false;
       
@@ -1214,28 +1233,30 @@ const updateRoomCode = () => {
       const randomType = type || ['movie', 'person', 'tv'][Math.floor(Math.random() * 3)]
       
       // Call the existing random function with specified type for single goal
-      await getRandomItems(randomType, 1, goalKey);
+      if (randomType) {
+        await getRandomItems(randomType, 1, goalKey);
+      }
     };
 
-    const getRandomItems = async (type, count, settingKey) => {
+    const getRandomItems = async (type: string, count: number, settingKey: string) => {
       isLoadingRandom.value = true
       try {
-        log('info', `Getting ${count} random ${type} items for setting: ${settingKey}`)
+        info(`Getting ${count} random ${type} items for setting: ${settingKey}`)
 
         // Check if TMDB cache is available
-        if (!tmdbCache.isInitialized) {
-          log('error', 'TMDB cache not initialized')
+        if (!(tmdbCache as any).isInitialized) {
+          logError('TMDB cache not initialized')
           alert('TMDB cache not ready. Please wait a moment and try again.')
           return
         }
 
-        let randomItems = []
+        let randomItems: any[] = []
 
         // Improved: sample a small popular window with a retry loop; keep calls minimal
         const exclude = new Set((props.mode.randomItems || [])
-          .filter((i) => i && i.settingKey !== settingKey)
-          .map((i) => buildKey(i))
-          .filter((k) => !!k))
+          .filter((i: any) => i && i.settingKey !== settingKey)
+          .map((i: any) => buildKey(i))
+          .filter((k: string | undefined): k is string => !!k))
         
         // For hybrid goals, also exclude currently selected goals to prevent duplicates
         if (settingKey === 'hybridGoals') {
@@ -1249,14 +1270,14 @@ const updateRoomCode = () => {
           })
         }
 
-        const attemptPick = async () => {
+        const attemptPick = async (pickType: string = type) => {
           // Build curated popular pool once per type, then pick locally
-          await ensureCuratedPool(type)
-          const curated = pickFromCurated(type, exclude, recentRandomHistory)
+          await ensureCuratedPool(pickType)
+          const curated = pickFromCurated(pickType, exclude as Set<string>, recentRandomHistory as Set<string>)
           if (curated && ItemService.getImageUrl(curated)) return curated
 
           // Fallback: sample from a popular window (1 call) and pick unique
-          const pool = await pickFromPopularWindow(type)
+          const pool = await pickFromPopularWindow(pickType)
           for (let i = 0; i < 6 && pool.length > 0; i++) {
             const candidate = pool[Math.floor(Math.random() * pool.length)]
             const key = buildKey(candidate)
@@ -1267,14 +1288,14 @@ const updateRoomCode = () => {
           
           // Last fallback: direct random (try a few times to get one with image)
           for (let i = 0; i < 3; i++) {
-            const candidate = await getRandomByType(type)
+            const candidate = await getRandomByType(pickType)
             if (candidate && ItemService.getImageUrl(candidate)) {
               return candidate
             }
           }
           
           // If all else fails, return the last attempt even without image
-          return await getRandomByType(type)
+          return await getRandomByType(pickType)
         }
 
         if (type === 'mixed') {
@@ -1325,15 +1346,21 @@ const updateRoomCode = () => {
         }
 
         // Record in recent history to reduce repeats on subsequent clicks
-        try { const k = buildKey(randomItems[0]); recentRandomHistory.add(k) } catch (_) {}
+        try { 
+          const k = buildKey(randomItems[0])
+          recentRandomHistory.add(k) 
+        } catch (err) {
+          // Failed to record in history - non-critical
+          debug('Failed to record random item in history', { error: err })
+        }
         
         if (randomItems.length === 0) {
-          log('warn', 'No random items returned')
+          warn('No random items returned')
           alert('No random items found. Please try again.')
           return
         }
         
-        log('info', `Generated ${randomItems.length} random items for ${settingKey}`)
+        info(`Generated ${randomItems.length} random items for ${settingKey}`)
         
         // Set the selected random item for display with setting key
         selectedRandomItems.value[type] = {
@@ -1357,7 +1384,7 @@ const updateRoomCode = () => {
           const goalCount = getHybridGoalCount()
           const goalKeys = ['hybridGoal1', 'hybridGoal2', 'hybridGoal3', 'hybridGoal4', 'hybridGoal5', 'hybridGoal6', 'hybridGoal7', 'hybridGoal8', 'hybridGoal9', 'hybridGoal10']
           
-          log('info', `Hybrid goals: generating ${goalCount} goals, got ${randomItems.length} items`)
+          info(`Hybrid goals: generating ${goalCount} goals, got ${randomItems.length} items`)
           
           // Create new goals object to ensure reactivity
           const newGoals = { ...selectedGoals.value }
@@ -1369,8 +1396,14 @@ const updateRoomCode = () => {
           
           // Fill goals up to current count
           for (let i = 0; i < goalCount && i < randomItems.length; i++) {
-            newGoals[goalKeys[i]] = randomItems[i] || null
-            log('info', `Set ${goalKeys[i]} to: ${randomItems[i]?.name || 'null'}`)
+            const goalKey = goalKeys[i]
+            if (goalKey) {
+              newGoals[goalKey] = randomItems[i] || null
+            }
+            const goalKeyForLog = goalKeys[i]
+            if (goalKeyForLog) {
+              info(`Set ${goalKeyForLog} to: ${randomItems[i]?.name || 'null'}`)
+            }
           }
           
           // Update all goals at once for better reactivity
@@ -1393,7 +1426,7 @@ const updateRoomCode = () => {
 
         // Clear previous random items for this specific setting
         // This prevents accumulating items from different settings
-        props.mode.randomItems = props.mode.randomItems.filter((item) => {
+        props.mode.randomItems = props.mode.randomItems.filter((item: any) => {
           // Keep items that were selected for different settings
           // We'll identify them by adding a settingKey property
           return item.settingKey !== settingKey
@@ -1429,15 +1462,13 @@ const updateRoomCode = () => {
         }
         
         // Show success message
-        log(
-          'info',
-          `Added ${randomItems.length} random ${type} items to ${props.mode.title} for setting: ${settingKey}`
-        )
+        info(`Added ${randomItems.length} random ${type} items to ${props.mode.title} for setting: ${settingKey}`)
 
         // Debug: Log the exact items being added
       } catch (error) {
-        log('error', `Failed to get random items: ${error.message}`)
-        alert(`Failed to get random items: ${error.message}`)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        logError(`Failed to get random items: ${errorMessage}`)
+        alert(`Failed to get random items: ${errorMessage}`)
       } finally {
         isLoadingRandom.value = false
       }
@@ -1462,24 +1493,24 @@ const updateRoomCode = () => {
     }
 
     // Use centralized ItemService for image URL generation
-    const getImageUrl = (tmdbData) => {
+    const getImageUrl = (tmdbData: any) => {
       const imageUrl = ItemService.getImageUrl(tmdbData)
       if (!imageUrl && tmdbData) {
-        log('warn', `No image URL for item: ${tmdbData.name || tmdbData.title || 'Unknown'}`, tmdbData)
+        warn(`No image URL for item: ${tmdbData.name || tmdbData.title || 'Unknown'}`, tmdbData)
       }
       return imageUrl
     }
 
     // Starting Items System for All Modes
-            const generateStartingItemsForMode = async (modeId, settings, selectedGoalsData) => {
-              log('info', `=== generateStartingItemsForMode called ===`)
-              log('info', `Mode ID: ${modeId}`)
-              log('info', `Settings:`, settings)
-              log('info', `Selected goals data:`, selectedGoalsData)
+            const generateStartingItemsForMode = async (modeId: string, settings: any, selectedGoalsData: any) => {
+              info(`=== generateStartingItemsForMode called ===`)
+              info(`Mode ID: ${modeId}`)
+              info(`Settings:`, settings)
+              info(`Selected goals data:`, selectedGoalsData)
       
-      const startingItems = []
-      const seen = new Set()
-      const pushUnique = (itm) => {
+      const startingItems: any[] = []
+      const seen = new Set<string>()
+      const pushUnique = (itm: any) => {
         const key = (itm && itm.tmdbData && itm.tmdbData.id)
           ? `${(itm.tmdbData.media_type || itm.type || '')}|${itm.tmdbData.id}`
           : `${(itm.type || '')}|${(itm.title || itm.name || '')}`
@@ -1497,7 +1528,7 @@ const updateRoomCode = () => {
           // Goal Mode: Add goal1 and goal2 as starting items
           if (settings.goal1) {
             // Find the TMDB data for goal1
-            const goal1Data = randomItems.find((item) => item.settingKey === 'goal1')
+            const goal1Data = randomItems.find((item: any) => item.settingKey === 'goal1')
             if (goal1Data) {
               pushUnique({
                 id: goal1Data.id || `goal1_${Date.now()}`,
@@ -1526,7 +1557,7 @@ const updateRoomCode = () => {
           }
           if (settings.goal2) {
             // Find the TMDB data for goal2
-            const goal2Data = randomItems.find((item) => item.settingKey === 'goal2')
+            const goal2Data = randomItems.find((item: any) => item.settingKey === 'goal2')
             if (goal2Data) {
               pushUnique({
                 id: goal2Data.id || `goal2_${Date.now()}`,
@@ -1558,7 +1589,7 @@ const updateRoomCode = () => {
         case 'knowledge':
           // Knowledge Mode: Add the starting item
           if (settings.startingPerson) {
-            const knowledgeData = randomItems.find((item) => item.settingKey === 'knowledge')
+            const knowledgeData = randomItems.find((item: any) => item.settingKey === 'knowledge')
             if (knowledgeData) {
               pushUnique({
                 id: knowledgeData.id || `knowledge_${Date.now()}`,
@@ -1588,18 +1619,17 @@ const updateRoomCode = () => {
 
         case 'anti':
           // Anti Mode: Generate random forbidden items (high score mode - avoid connections)
-          log('info', `=== ANTI MODE CASE STARTED ===`)
-          console.log(`🔍 DEBUG: Anti Mode case started`)
-          console.log(`🔍 DEBUG: Settings object:`, settings)
-          console.log(`🔍 DEBUG: settings.avoidCount:`, settings.avoidCount)
+          info(`=== ANTI MODE CASE STARTED ===`)
+          debug('Anti Mode case started', { 
+            avoidCount: settings.avoidCount,
+            forbiddenCount: parseInt(settings.avoidCount) || 5,
+            tmdbCacheInitialized: (tmdbCache as any).isInitialized
+          })
           
           // Get the number of forbidden items from settings
           const forbiddenCount = parseInt(settings.avoidCount) || 5
-          log('info', `Anti Mode: Generating ${forbiddenCount} forbidden items`)
-          log('info', `Settings avoidCount: ${settings.avoidCount}, parsed: ${forbiddenCount}`)
-          console.log(`🔍 DEBUG: forbiddenCount: ${forbiddenCount}`)
-          console.log(`🔍 DEBUG: tmdbCache.isInitialized:`, tmdbCache.isInitialized)
-          console.log(`🔍 DEBUG: tmdbCache:`, tmdbCache)
+          info(`Anti Mode: Generating ${forbiddenCount} forbidden items`)
+          info(`Settings avoidCount: ${settings.avoidCount}, parsed: ${forbiddenCount}`)
           
           // Generate random forbidden items (these are the items player must avoid)
           const forbiddenTypes = ['movie', 'person', 'tv']
@@ -1612,15 +1642,15 @@ const updateRoomCode = () => {
           
           while (forbiddenItems.length < forbiddenCount && attempts < maxAttempts) {
             const type = forbiddenTypes[Math.floor(Math.random() * forbiddenTypes.length)]
-            log('info', `Attempt ${attempts + 1}: Generating ${type} item`)
+            info(`Attempt ${attempts + 1}: Generating ${type} item`)
             try {
               const randomItem = await tmdbCache.getRandomItem(type)
-              log('info', `Got random item:`, randomItem)
+              info(`Got random item:`, randomItem)
               if (randomItem) {
                 const itemKey = `${randomItem.media_type || type}|${randomItem.id}`
                 if (!forbiddenSeen.has(itemKey)) {
                   forbiddenSeen.add(itemKey)
-                  const forbiddenItem = {
+                  const forbiddenItem: any = {
                     id: randomItem.id || `forbidden_${forbiddenItems.length}_${Date.now()}`,
                     title: randomItem.title || randomItem.name || `Forbidden ${type}`,
                     type: randomItem.media_type || type,
@@ -1633,17 +1663,17 @@ const updateRoomCode = () => {
                     tmdbData: randomItem,
                   }
                   forbiddenItems.push(forbiddenItem)
-                  log('info', `Added forbidden item ${forbiddenItems.length}:`, forbiddenItem.title)
+                  info(`Added forbidden item ${forbiddenItems.length}:`, forbiddenItem.title)
             } else {
-                  log('info', `Duplicate item skipped: ${randomItem.title || randomItem.name}`)
+                  info(`Duplicate item skipped: ${randomItem.title || randomItem.name}`)
                 }
               } else {
-                log('warn', `No random item returned for type: ${type}`)
-                console.log(`🔍 DEBUG: No random item returned for type: ${type}`)
-                console.log(`🔍 DEBUG: randomItem value:`, randomItem)
+                warn(`No random item returned for type: ${type}`)
+                debug('No random item returned', { type, randomItem })
               }
             } catch (error) {
-              log('error', `Failed to generate forbidden item: ${error.message}`)
+              const errorMessage = error instanceof Error ? error.message : String(error)
+              logError(`Failed to generate forbidden item: ${errorMessage}`)
             }
             attempts++
           }
@@ -1651,16 +1681,16 @@ const updateRoomCode = () => {
           // Add forbidden items to starting items (Anti Mode = only forbidden items)
           forbiddenItems.forEach(item => pushUnique(item))
           
-          log('info', `Anti Mode: Generated ${forbiddenItems.length} forbidden items (high score mode - avoid connections)`)
+          info(`Anti Mode: Generated ${forbiddenItems.length} forbidden items (high score mode - avoid connections)`)
           break
 
         case 'hybrid':
-          log('info', `=== HYBRID CASE STARTED ===`)
+          info(`=== HYBRID CASE STARTED ===`)
           // Hybrid Mode: Add grounding item + hybrid goals (A → Z1, A → Z2)
 
           // First, add the grounding item (A) - ALWAYS add starting item
-          log('info', `Hybrid starting item check: settings.hybridStartingItem = ${settings.hybridStartingItem}`)
-          log('info', `Hybrid starting item data: selectedGoalsData.hybridStarting =`, selectedGoalsData.hybridStarting)
+          info(`Hybrid starting item check: settings.hybridStartingItem = ${settings.hybridStartingItem}`)
+          info(`Hybrid starting item data: selectedGoalsData.hybridStarting =`, selectedGoalsData.hybridStarting)
           
           // Always add starting item, even if settings are empty
           const groundingData = selectedGoalsData.hybridStarting
@@ -1697,19 +1727,19 @@ const updateRoomCode = () => {
           const goalCount = parseInt(settings.hybridGoalCount) || 2
           const hybridGoals = []
           
-          log('info', `Hybrid goal count: ${goalCount}`)
+          info(`Hybrid goal count: ${goalCount}`)
           
           // Get goals based on the slider count (this is the number of GOALS, not total items)
           for (let i = 1; i <= goalCount; i++) {
             const goalKey = `hybridGoal${i}`
             const goalData = selectedGoalsData[goalKey]
-            log('info', `Checking ${goalKey}: goalData =`, goalData)
+            info(`Checking ${goalKey}: goalData =`, goalData)
             if (goalData) {
               hybridGoals.push(goalData)
             }
           }
           
-          log('info', `Hybrid goals found: ${hybridGoals.length}`, hybridGoals)
+          info(`Hybrid goals found: ${hybridGoals.length}`, hybridGoals)
 
           if (hybridGoals.length > 0) {
             hybridGoals.forEach((goalData, index) => {
@@ -1750,7 +1780,7 @@ const updateRoomCode = () => {
           if (randomItems.length > 0) {
             // Take up to 3 random items for free play
             const zenItems = randomItems.slice(0, Math.min(3, randomItems.length))
-            zenItems.forEach((item, index) => {
+            zenItems.forEach((item: any, index: number) => {
               pushUnique({
                 id: item.id || `zen_${index}_${Date.now()}`,
                 title: item.title || item.name || `Zen Item ${index + 1}`,
@@ -1777,15 +1807,15 @@ const updateRoomCode = () => {
           break
       }
 
-      log('info', `Total starting items generated: ${startingItems.length}`, startingItems)
+      info(`Total starting items generated: ${startingItems.length}`, startingItems)
       return startingItems
     }
 
     // Start game
     const startGame = async () => {
-              log('info', `=== START GAME CALLED ===`)
-              log('info', `Mode ID: ${props.mode.id}`)
-              log('info', `Mode Settings:`, modeSettings.value)
+              info(`=== START GAME CALLED ===`)
+              info(`Mode ID: ${props.mode.id}`)
+              info(`Mode Settings:`, modeSettings.value)
       try {
         // CACHE THE SELECTED ITEMS NOW THAT THE GAME IS STARTING
         if (props.mode.randomItems && props.mode.randomItems.length > 0) {
@@ -1794,7 +1824,8 @@ const updateRoomCode = () => {
               const itemType = item.media_type || 'unknown'
               await tmdbCache.cacheItemForGame(item, itemType)
             } catch (error) {
-              log('error', `Failed to cache item for game: ${error.message}`)
+              const errorMessage = error instanceof Error ? error.message : String(error)
+              logError(`Failed to cache item for game: ${errorMessage}`)
             }
           }
         }
@@ -1806,10 +1837,10 @@ const updateRoomCode = () => {
         }
 
         // Generate starting items for the current mode
-        log('info', `About to generate starting items for mode: ${props.mode.id}`)
-        log('info', `Mode settings:`, modeSettings.value)
+        info(`About to generate starting items for mode: ${props.mode.id}`)
+        info(`Mode settings:`, modeSettings.value)
         const startingItems = await generateStartingItemsForMode(props.mode.id, modeSettings.value, selectedGoals.value)
-        log('info', `Generated starting items:`, startingItems)
+        info(`Generated starting items:`, startingItems)
 
         // Store starting items globally for other components that might need it (dev only)
         if (typeof window !== 'undefined' && import.meta.env && import.meta.env.DEV) {
@@ -1828,9 +1859,7 @@ const updateRoomCode = () => {
         const playType = (props.mode && props.mode.gameOptions && props.mode.gameOptions.playType) || (m ? m[1] : null)
         
         const isSolo = playType === 'solo'
-        // @ts-ignore - Suppress unused variable warnings for production
         const isPvP = playType === 'pvp' || playType === 'couch-pvp'
-        // @ts-ignore - Suppress unused variable warnings for production
         const isCouch = playType === 'couch-multiplayer' || playType === 'couch-pvp'
 
         let code = null
@@ -1856,28 +1885,50 @@ const updateRoomCode = () => {
               const json = await resp.json()
               if (json && json.code) {
                 window.location.hash = `room=${json.code}`
-                try { sessionStorage.setItem('lastRoomCode', json.code) } catch (_) {}
+                try { 
+                  sessionStorage.setItem('lastRoomCode', json.code) 
+                } catch (err) {
+                  debug('Failed to save room code to sessionStorage', { error: err, code: json.code })
+                }
                 code = json.code
               } else {
                 encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sharePayload))))
                 window.location.hash = `room=${code}&s=${encoded}`
-                try { sessionStorage.setItem('lastRoomCode', code) } catch (_) {}
+                try { 
+                sessionStorage.setItem('lastRoomCode', code) 
+              } catch (err) {
+                debug('Failed to save room code to sessionStorage', { error: err, code })
+              }
               }
             } else {
               encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sharePayload))))
               window.location.hash = `room=${code}&s=${encoded}`
-              try { sessionStorage.setItem('lastRoomCode', code) } catch (_) {}
+              try { 
+                sessionStorage.setItem('lastRoomCode', code) 
+              } catch (err) {
+                debug('Failed to save room code to sessionStorage', { error: err, code })
+              }
             }
           } catch (e) {
             try {
               encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sharePayload))))
               window.location.hash = `room=${code}&s=${encoded}`
-              try { sessionStorage.setItem('lastRoomCode', code) } catch (_) {}
-            } catch (_) {}
+              try { 
+                sessionStorage.setItem('lastRoomCode', code) 
+              } catch (err) {
+                debug('Failed to save room code to sessionStorage', { error: err, code })
+              }
+            } catch (err) {
+              debug('Failed to generate room code, using fallback', { error: err })
+            }
           }
         } else {
           // Solo: clear hash
-          try { window.location.hash = '' } catch (_) {}
+          try { 
+            window.location.hash = '' 
+          } catch (err) {
+            debug('Failed to clear location hash', { error: err })
+          }
         }
         const gameConfig = gameEngine.startGame(props.mode.id, {
           timeLimit: modeSettings.value.timeLimit,
@@ -1919,14 +1970,15 @@ const updateRoomCode = () => {
 
         emit('start-game', modeWithSettings)
       } catch (error) {
-        log('error', `Failed to start game: ${error.message}`)
-        alert(`Failed to start game: ${error.message}`)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        logError(`Failed to start game: ${errorMessage}`)
+        alert(`Failed to start game: ${errorMessage}`)
       }
     }
 
     // Go back to mode selection
     const goBack = () => {
-      log('info', 'Back button clicked')
+      info('Back button clicked')
       emit('go-back')
     }
 
@@ -1977,7 +2029,7 @@ const updateRoomCode = () => {
     })
 
     // Calculate position for each goal in circle - fixed version
-    const getGoalPosition = (index) => {
+    const getGoalPosition = (index: number) => {
       const count = getHybridGoalCount()
       const angle = (index * 360) / count
       const radius = 45 // Distance from center
@@ -1998,7 +2050,7 @@ const updateRoomCode = () => {
     }
 
     // Update goal count from slider
-    const updateGoalCount = async (event) => {
+    const updateGoalCount = async (event: any) => {
       const newCount = parseInt(event.target.value)
       modeSettings.value.hybridGoalCount = newCount.toString()
       
@@ -2007,21 +2059,24 @@ const updateRoomCode = () => {
       
       // Only generate goals that don't exist yet
       for (let i = 0; i < newCount; i++) {
-        if (!selectedGoals.value[goalKeys[i]]) {
+        const goalKey = goalKeys[i]
+        if (goalKey && !selectedGoals.value[goalKey]) {
           const types = ['movie', 'person', 'tv']
           const goalType = types[Math.floor(Math.random() * types.length)]
-          await getRandomItems(goalType, 1, goalKeys[i])
+          if (goalType) {
+            await getRandomItems(goalType, 1, goalKey)
+          }
         }
       }
     }
 
     // Custom Mode functions
-    const handleCustomConfigChange = (config) => {
-      log('info', 'Custom mode configuration changed:', config)
+    const handleCustomConfigChange = (config: any) => {
+      info('Custom mode configuration changed:', config)
 
       // Check if user wants to exit Challenge Maker
       if (config.mode === 'exit') {
-        log('info', 'User requested to exit Challenge Maker, going back to mode selection')
+        info('User requested to exit Challenge Maker, going back to mode selection')
         emit('go-back')
         return
       }
@@ -2061,28 +2116,50 @@ const updateRoomCode = () => {
                 const json = await resp.json()
                 if (json && json.code) {
                   window.location.hash = `room=${json.code}`
-                  try { sessionStorage.setItem('lastRoomCode', json.code) } catch (_) {}
+                  try { 
+                  sessionStorage.setItem('lastRoomCode', json.code) 
+                } catch (err) {
+                  debug('Failed to save room code to sessionStorage', { error: err, code: json.code })
+                }
                   code = json.code
                 } else {
                   const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sharePayload))))
                   window.location.hash = `room=${code}&s=${encoded}`
-                  try { sessionStorage.setItem('lastRoomCode', code) } catch (_) {}
+                  try { 
+                sessionStorage.setItem('lastRoomCode', code) 
+              } catch (err) {
+                debug('Failed to save room code to sessionStorage', { error: err, code })
+              }
                 }
               } else {
                 const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sharePayload))))
                 window.location.hash = `room=${code}&s=${encoded}`
-                try { sessionStorage.setItem('lastRoomCode', code) } catch (_) {}
+                try { 
+                sessionStorage.setItem('lastRoomCode', code) 
+              } catch (err) {
+                debug('Failed to save room code to sessionStorage', { error: err, code })
+              }
               }
             } catch (e) {
               try {
                 const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sharePayload))))
                 window.location.hash = `room=${code}&s=${encoded}`
-                try { sessionStorage.setItem('lastRoomCode', code) } catch (_) {}
-              } catch (_) {}
+                try { 
+                sessionStorage.setItem('lastRoomCode', code) 
+              } catch (err) {
+                debug('Failed to save room code to sessionStorage', { error: err, code })
+              }
+              } catch (err) {
+              debug('Failed to generate room code, using fallback', { error: err })
+            }
             }
           } else {
             // Solo: clear hash
-            try { window.location.hash = '' } catch (_) {}
+            try { 
+            window.location.hash = '' 
+          } catch (err) {
+            debug('Failed to clear location hash', { error: err })
+          }
           }
 
         // Build mode payload with multiplayer support
@@ -2107,33 +2184,37 @@ const updateRoomCode = () => {
 
         // Execute multiplayer setup
         handleCustomModeMultiplayer().catch(error => {
-          log('error', `Failed to setup custom mode multiplayer: ${error.message}`)
-          alert(`Failed to setup multiplayer: ${error.message}`)
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          logError(`Failed to setup custom mode multiplayer: ${errorMessage}`)
+          alert(`Failed to setup multiplayer: ${errorMessage}`)
         })
         return
       }
 
       // Store the configuration for when the game starts
       customSettings.value = {
-        nodes: config.nodes,
-        connections: config.connections,
+        ...customSettings.value,
+        ...(config.nodes ? { nodes: config.nodes } : {}),
+        ...(config.connections ? { connections: config.connections } : {}),
         timestamp: new Date().toISOString(),
-      }
+      } as any
     }
 
     const initializeCustomMode = () => {
-      log('info', 'Initializing custom mode with settings:', customSettings.value)
+      info('Initializing custom mode with settings:', customSettings.value)
       // This will be expanded later when we implement the full custom mode
       alert('Custom Mode initialization sequence started! Advanced configuration loaded.')
     }
 
     const resetCustomSettings = () => {
       customSettings.value = {
-        nodes: [],
-        connections: [],
+        ruleEngine: 'standard',
+        connectionMatrix: 'person_media',
+        timeControl: 300,
+        difficultyLevel: 'normal',
         timestamp: new Date().toISOString(),
-      }
-      log('info', 'Custom settings reset to defaults')
+      } as any
+      info('Custom settings reset to defaults')
     }
 
     // Get current timestamp for dev panel
@@ -2160,13 +2241,13 @@ const updateRoomCode = () => {
         // Knowledge Mode
         startingPerson: '',
         filmCount: '5',
-        timerType: 'none', // none, 1min, 5min, 10min
+        knowledgeTimerType: 'none', // none, 1min, 5min, 10min
 
         // Anti Mode
         avoidCount: '10',
         customAvoidCount: '20',
         avoidItems: '',
-        timerType: 'none', // none, 1min, 5min, 10min
+        antiTimerType: 'none', // none, 1min, 5min, 10min
 
         // Hybrid Mode
         hybridStartingItem: '', // Starting item for all paths
@@ -2177,6 +2258,11 @@ const updateRoomCode = () => {
         hybridGoal3: '', // Goal 3 item
         hybridGoal4: '', // Goal 4 item
         hybridGoal5: '', // Goal 5 item
+        hybridGoal6: '', // Goal 6 item
+        hybridGoal7: '', // Goal 7 item
+        hybridGoal8: '', // Goal 8 item
+        hybridGoal9: '', // Goal 9 item
+        hybridGoal10: '', // Goal 10 item
 
         // Common Settings for All Modes
         commonTimer: '300', // 5 minutes default
@@ -2200,13 +2286,13 @@ const updateRoomCode = () => {
         mixed: null,
       }
 
-      log('info', 'Settings reset to defaults')
+      info('Settings reset to defaults')
     }
 
     // Prefill goals for Goal Mode
     const prefillGoals = async () => {
       try {
-        log('info', 'Prefilling goals for Goal Mode')
+        info('Prefilling goals for Goal Mode')
         
         // Randomly select types for each goal
         const types = ['movie', 'person', 'tv']
@@ -2214,73 +2300,87 @@ const updateRoomCode = () => {
         const goal2Type = types[Math.floor(Math.random() * types.length)]
         
         // Get random items for both goals
-        await Promise.all([
-          getRandomItems(goal1Type, 1, 'goal1'),
-          getRandomItems(goal2Type, 1, 'goal2')
-        ])
+        if (goal1Type && goal2Type) {
+          await Promise.all([
+            getRandomItems(goal1Type, 1, 'goal1'),
+            getRandomItems(goal2Type, 1, 'goal2')
+          ])
+        }
         
-        log('info', `Goals prefilled: ${goal1Type} for goal1, ${goal2Type} for goal2`)
+        info(`Goals prefilled: ${goal1Type} for goal1, ${goal2Type} for goal2`)
       } catch (error) {
-        log('error', `Failed to prefill goals: ${error.message}`)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        logError(`Failed to prefill goals: ${errorMessage}`)
       }
     }
 
     // Prefill starting item for Knowledge Mode
     const prefillKnowledge = async () => {
       try {
-        log('info', 'Prefilling starting item for Knowledge Mode')
+        info('Prefilling starting item for Knowledge Mode')
         
         // Randomly select type for starting item
         const types = ['movie', 'person', 'tv']
         const startingType = types[Math.floor(Math.random() * types.length)]
         
         // Get random item for knowledge
-        await getRandomItems(startingType, 1, 'knowledge')
+        if (startingType) {
+          await getRandomItems(startingType, 1, 'knowledge')
+        }
         
-        log('info', `Starting item prefilled: ${startingType}`)
+        info(`Starting item prefilled: ${startingType}`)
       } catch (error) {
-        log('error', `Failed to prefill starting item: ${error.message}`)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        logError(`Failed to prefill starting item: ${errorMessage}`)
       }
     }
 
     // Prefill avoid item for Anti Mode
     const prefillAnti = async () => {
       try {
-        log('info', 'Prefilling avoid item for Anti Mode')
+        info('Prefilling avoid item for Anti Mode')
         
         // Randomly select type for avoid item
         const types = ['movie', 'person', 'tv']
         const avoidType = types[Math.floor(Math.random() * types.length)]
         
         // Get random item for anti
-        await getRandomItems(avoidType, 1, 'anti')
+        if (avoidType) {
+          await getRandomItems(avoidType, 1, 'anti')
+        }
         
-        log('info', `Avoid item prefilled: ${avoidType}`)
+        info(`Avoid item prefilled: ${avoidType}`)
       } catch (error) {
-        log('error', `Failed to prefill avoid item: ${error.message}`)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        logError(`Failed to prefill avoid item: ${errorMessage}`)
       }
     }
 
     // Prefill starting item and goals for Hybrid Mode
     const prefillHybrid = async () => {
       try {
-        log('info', 'Prefilling starting item and goals for Hybrid Mode')
+        info('Prefilling starting item and goals for Hybrid Mode')
         
         // Randomly select type for starting item
         const types = ['movie', 'person', 'tv']
         const startingType = types[Math.floor(Math.random() * types.length)]
         
         // Get random item for hybrid starting
-        await getRandomItems(startingType, 1, 'hybridStartingItem')
+        if (startingType) {
+          await getRandomItems(startingType, 1, 'hybridStartingItem')
+        }
         
         // Get random goals based on current goal count
         const goalType = types[Math.floor(Math.random() * types.length)]
         const goalCount = getHybridGoalCount()
-        await getRandomItems(goalType, goalCount, 'hybridGoals')
+        if (goalType) {
+          await getRandomItems(goalType, goalCount, 'hybridGoals')
+        }
         
-        log('info', `Hybrid starting item and goals prefilled: ${startingType} + ${goalType}`)
+        info(`Hybrid starting item and goals prefilled: ${startingType} + ${goalType}`)
       } catch (error) {
-        log('error', `Failed to prefill hybrid items: ${error.message}`)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        logError(`Failed to prefill hybrid items: ${errorMessage}`)
       }
     }
 
@@ -2288,11 +2388,15 @@ const updateRoomCode = () => {
     // Lifecycle
             onMounted(async () => {
       // Check TMDB cache status
-      if (tmdbCache.isInitialized) {
-        log('info', 'TMDB Cache Status: Available')
+      if ((tmdbCache as any).isInitialized) {
+        info('TMDB Cache Status: Available')
       }
       updateRoomCode()
-      try { window.addEventListener('hashchange', updateRoomCode) } catch (_) {}
+      try { 
+        window.addEventListener('hashchange', updateRoomCode) 
+      } catch (err) {
+        debug('Failed to add hashchange listener', { error: err })
+      }
       
       // Prefill goals for Goal Mode
       if (props.mode.id === 'goal') {
@@ -2316,7 +2420,11 @@ const updateRoomCode = () => {
       
     })
     onUnmounted(() => {
-      try { window.removeEventListener('hashchange', updateRoomCode) } catch (_) {}
+      try { 
+        window.removeEventListener('hashchange', updateRoomCode) 
+      } catch (err) {
+        debug('Failed to remove hashchange listener', { error: err })
+      }
     })
 
     // Tutorial function

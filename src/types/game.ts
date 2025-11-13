@@ -48,7 +48,14 @@ export interface SearchResult {
     name?: string
     media_type: string
   }
-  tmdbData?: any
+  tmdbData?: {
+    id: number
+    media_type: string
+    gender?: number
+    title?: string
+    name?: string
+    [key: string]: unknown
+  }
   tmdbId?: number
 }
 
@@ -72,7 +79,7 @@ export interface GameRule {
   name: string
   description: string
   enabled: boolean
-  value?: any
+  value?: string | number | boolean | unknown
 }
 
 export interface GameSettings {
@@ -100,7 +107,8 @@ export interface GameOptions {
     value: string
   }
   difficulty?: 'easy' | 'medium' | 'hard'
-  [key: string]: any // Allow additional properties
+  goals?: GoalData[]
+  [key: string]: unknown // Allow additional properties with unknown type
 }
 
 export interface WinCondition {
@@ -150,7 +158,7 @@ export interface PvPResults {
 // Collaboration types
 export interface CollabMessage {
   type: 'move' | 'add_item' | 'connection' | 'game_start' | 'state_sync'
-  data: any
+  data: GameItem | Connection | GameState | unknown
   timestamp: number
   playerId?: string
 }
@@ -167,9 +175,10 @@ export interface GoalData {
   id: string
   description: string
   type: 'connection' | 'item' | 'custom'
-  target: any
+  target: string | number | GameItem | GoalData | unknown
   completed: boolean
   progress: number
+  status?: 'completed' | 'in-progress' | 'pending'
   mode?: string
   stats?: {
     score?: number
@@ -181,7 +190,7 @@ export interface GoalData {
   pathIds?: string[]
   message?: string
   lost?: boolean
-  losingPair?: any
+  losingPair?: { from: string; to: string } | unknown
   newGoalIndex?: number
   newGoal?: GoalData
   title?: string
@@ -457,7 +466,7 @@ export interface CustomModeSettingsProps {
 
 export interface CustomModeSettingsEmits {
   (e: 'back'): void
-  (e: 'start-custom-game', gameData: any): void
+  (e: 'start-custom-game', gameData: { goals: CustomGoal[]; gameType: string; castFilter: string; timerMinutes: number; knowledgeTarget: number }): void
   (e: 'import-game'): void
 }
 
@@ -474,6 +483,30 @@ export interface GameType {
   id: string
   name: string
   description: string
+}
+
+// CustomGameData types
+export interface CustomGameShowData {
+  episodes: unknown[]
+  currentEpisodeIndex: number
+  totalEpisodes: number
+}
+
+export interface CustomGameData {
+  id: string
+  name: string
+  icon?: string
+  description?: string
+  modeType?: string
+  goals?: unknown[]
+  settings?: Record<string, unknown>
+  isAntiMode?: boolean
+  showData?: CustomGameShowData
+  gameOptions?: {
+    playType?: string
+    startingItems?: unknown[]
+    [key: string]: unknown
+  }
 }
 
 // SearchPanel types
@@ -700,7 +733,7 @@ export interface ModeCardEmits {
 
 // BoardShell types
 export interface BoardShellProps {
-  boardStyle: Record<string, any>
+  boardStyle: Record<string, string | number | boolean>
 }
 
 export interface GoalAdvancement {
@@ -742,7 +775,7 @@ export interface TutorialState {
 // Store types
 export interface GameState {
   gameMode: GameMode | null
-  gameOptions: any
+  gameOptions: GameOptions
   gameItems: GameItem[]
   connections: Connection[]
   isGameActive: boolean

@@ -6,7 +6,7 @@ import tmdbCache from '../cache/tmdbCache.ts'
 import { normalizeMediaType, matchesGenderFilter, GENDERS } from '../../utils/constants.ts'
 import { pinia } from '@store/pinia.ts'
 import { useFiltersStore } from '@store/filters.store.ts'
-import { log } from '../ui/log.ts'
+import { warn } from '../ui/log.ts'
 import type { SearchResult } from '../../types/game'
 
 interface SearchOptions {
@@ -49,7 +49,7 @@ class SearchService {
     }
 
     if (!sanitized) {
-      log('warn', 'Search called with empty query')
+      warn('Search called with empty query')
       return { success: false, error: 'Query cannot be empty', results: [] }
     }
 
@@ -90,7 +90,7 @@ class SearchService {
         filteredCount: filteredResults.length,
       }
     } catch (error) {
-      log('error', `Search failed for "${query}":`, error.message)
+      logError( `Search failed for "${query}":`, error.message)
       return { success: false, error: error.message, results: [] }
     } finally {
       this.isSearching = false
@@ -99,7 +99,7 @@ class SearchService {
 
   // Process raw TMDB results into game-ready format
   processResults(results, options = {}) {
-    log('info', `Processing ${results.length} raw results`)
+    info( `Processing ${results.length} raw results`)
 
     return results.map((result) => this.transformResult(result))
   }
@@ -187,7 +187,7 @@ class SearchService {
       filtered = filtered.filter((result) => result.type === options.mediaType)
     }
 
-    log('info', `Applied filters: ${results.length} → ${filtered.length} results`)
+    info( `Applied filters: ${results.length} → ${filtered.length} results`)
     return filtered
   }
 
@@ -205,63 +205,63 @@ class SearchService {
   // Update filters
   updateFilters(newFilters) {
     this.currentFilters = { ...this.currentFilters, ...newFilters }
-    log('info', 'Filters updated:', this.currentFilters)
+    info( 'Filters updated:', this.currentFilters)
   }
 
   // Clear search results
   clearResults() {
     this.searchResults = []
     this.lastQuery = ''
-    log('info', 'Search results cleared')
+    info( 'Search results cleared')
   }
 
   // Get hint results (same as search but with different context)
   async getHint(query, options = {}) {
-    log('info', `Getting hint for "${query}"`)
+    info( `Getting hint for "${query}"`)
     return this.search(query, options)
   }
 
   // Test the search service
   async testSearch() {
-    log('info', '🧪 Testing Search Service...')
+    info( '🧪 Testing Search Service...')
 
     try {
       // Test 1: Basic search
-      log('info', '🧪 Test 1: Basic search for "jack black"')
+      info( '🧪 Test 1: Basic search for "jack black"')
       const searchResult = await this.search('jack black')
 
       if (!searchResult.success) {
         return { success: false, error: 'Basic search failed', details: searchResult }
       }
 
-      log('info', `✅ Basic search: Found ${searchResult.results.length} results`)
+      info( `✅ Basic search: Found ${searchResult.results.length} results`)
 
       // Test 2: Search with actor filter
-      log('info', '🧪 Test 2: Search with actor filter')
+      info( '🧪 Test 2: Search with actor filter')
       const actorResult = await this.search('jack black', { castFilter: 'actor' })
 
       if (!actorResult.success) {
         return { success: false, error: 'Actor filter search failed', details: actorResult }
       }
 
-      log('info', `✅ Actor filter search: Found ${actorResult.results.length} results`)
+      info( `✅ Actor filter search: Found ${actorResult.results.length} results`)
 
       // Test 3: Get hint
-      log('info', '🧪 Test 3: Get hint for "tom hanks"')
+      info( '🧪 Test 3: Get hint for "tom hanks"')
       const hintResult = await this.getHint('tom hanks')
 
       if (!hintResult.success) {
         return { success: false, error: 'Hint search failed', details: hintResult }
       }
 
-      log('info', `✅ Hint search: Found ${hintResult.results.length} results`)
+      info( `✅ Hint search: Found ${hintResult.results.length} results`)
 
       // Test 4: Check search state
       const state = this.getSearchState()
-      log('info', '🧪 Test 4: Search state check')
-      log('info', 'Search state:', state)
+      info( '🧪 Test 4: Search state check')
+      info( 'Search state:', state)
 
-      log('info', '🎉 All Search Service tests completed!')
+      info( '🎉 All Search Service tests completed!')
 
       return {
         success: true,
@@ -273,7 +273,7 @@ class SearchService {
         },
       }
     } catch (error) {
-      log('error', 'Search service test failed:', error.message)
+      logError( 'Search service test failed:', error.message)
       return { success: false, error: error.message }
     }
   }

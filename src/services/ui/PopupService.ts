@@ -92,7 +92,8 @@ class PopupService {
 
   // Show custom popup
   showCustom(type, title, message, icon = 'ℹ️', duration = 3000, data = {}) {
-    console.log('PopupService.showCustom called:', { type, title, message, icon, duration })
+    // Using debug level since this is called frequently
+    // debug('PopupService.showCustom called', { type, title, message, icon, duration })
     const popupData = {
       type,
       title,

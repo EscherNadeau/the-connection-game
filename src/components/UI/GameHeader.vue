@@ -45,9 +45,8 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-// @ts-ignore
-import { useGameStateStore } from '@store/gameState.store.ts'
-import type { GameHeaderProps, GameHeaderEmits } from '../../types/game'
+import { useGameStateStore } from '@store/gameState.store'
+import type { GameHeaderProps, GameHeaderEmits, GoalData, GameItem } from '../../types/game'
 
 const props = defineProps<GameHeaderProps>()
 const emit = defineEmits<GameHeaderEmits>()
@@ -66,10 +65,9 @@ const mainStats = computed(() => {
   if (!props.gameMode) return []
   
   const connectionCount = connections.value?.length || 0
-  // @ts-ignore - goals property may not exist on gameOptions
-  const goals = gameOptions.value?.goals || []
+  const goals = (gameOptions.value && 'goals' in gameOptions.value ? (gameOptions.value.goals as GoalData[] | undefined) : undefined) || []
   const totalGoals = goals.length
-  const completed = goals.filter((goal: any) => goal.status === 'completed').length
+  const completed = goals.filter((goal: GoalData) => goal.status === 'completed').length
   
   // Check if we're in queue mode (custom mode with goalQueue)
   const isQueueMode = props.gameMode === 'custom' && props.goalQueue && props.goalQueue.length > 0
@@ -156,22 +154,24 @@ const mainStats = computed(() => {
 const splitStats = computed(() => {
   if (!props.gameMode || props.gameMode === 'anti') return []
   
-  const items = gameItems.value || []
-  const getType = (it: any) => it?.type || it?.originalData?.media_type || it?.tmdbData?.media_type || ''
-  const isPerson = (it: any) => getType(it) === 'person'
-  const isMovie = (it: any) => getType(it) === 'movie'
-  const isTV = (it: any) => getType(it) === 'tv'
-  const getGenderRaw = (it: any) => it?.gender ?? it?.originalData?.gender ?? it?.tmdbData?.gender ?? it?.details?.gender
-  const getGender = (it: any) => {
+  const items: GameItem[] = gameItems.value || []
+  const getType = (it: GameItem): string => it?.type || it?.tmdbData?.media_type || ''
+  const isPerson = (it: GameItem): boolean => getType(it) === 'person'
+  const isMovie = (it: GameItem): boolean => getType(it) === 'movie'
+  const isTV = (it: GameItem): boolean => getType(it) === 'tv'
+  const getGenderRaw = (it: GameItem): number | string | undefined => {
+    return it?.tmdbData?.gender
+  }
+  const getGender = (it: GameItem): number | string | undefined => {
     const g = getGenderRaw(it)
     if (typeof g === 'string') return g.toLowerCase()
     return g
   }
   
-  const actorCount = items.filter((it: any) => isPerson(it) && (getGender(it) === 'male' || getGender(it) === 2)).length
-  const actressCount = items.filter((it: any) => isPerson(it) && (getGender(it) === 'female' || getGender(it) === 1)).length
-  const movieCount = items.filter((it: any) => isMovie(it)).length
-  const tvCount = items.filter((it: any) => isTV(it)).length
+  const actorCount = items.filter((it: GameItem) => isPerson(it) && (getGender(it) === 'male' || getGender(it) === 2)).length
+  const actressCount = items.filter((it: GameItem) => isPerson(it) && (getGender(it) === 'female' || getGender(it) === 1)).length
+  const movieCount = items.filter((it: GameItem) => isMovie(it)).length
+  const tvCount = items.filter((it: GameItem) => isTV(it)).length
   
   return [
     { label: 'Actors', value: actorCount },

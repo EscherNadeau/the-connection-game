@@ -73,7 +73,7 @@
         :stats="resultModal.stats"
         :game-mode="gameMode"
         @new-game="goBack"
-        @freeplay="enterZenFreePlay"
+        @freeplay="handleEnterZenFreePlay"
         @show-path="onShowPath"
         @next-episode="onNextEpisode"
         @finish-show="onFinishShow"
@@ -82,7 +82,7 @@
       <UnifiedPopup 
         :game-mode="gameMode"
         @new-game="goBack"
-        @freeplay="enterZenFreePlay"
+        @freeplay="handleEnterZenFreePlay"
         @show-path="onShowPath"
         @next-episode="onNextEpisode"
         @finish-show="onFinishShow"
@@ -124,6 +124,7 @@ import { usePvPGame } from '../composables/usePvPGame.ts'
 import { useBackgrounds } from '../composables/useBackgrounds.ts'
 import { useCollaboration } from '../composables/useCollaboration.ts'
 import { useGoalManagement } from '../composables/useGoalManagement.ts'
+import { debug, warn, error as logError } from '../services/ui/log.ts'
 
 export default {
   name: 'GameView',
@@ -166,7 +167,7 @@ export default {
       this.handleItemMoved(move)
     },
     goBack() {
-      console.log('↩ Back button clicked - ending game and navigating to mode selection')
+      debug('Back button clicked - ending game and navigating to mode selection')
       
       // End the current game properly
       this.endGame()
@@ -192,7 +193,8 @@ export default {
           window.location.hash = ''
         }
         }
-      } catch (error) {
+      } catch (err) {
+        warn('Failed to preserve play type when going back', { error: err })
         window.location.hash = ''
       }
       
@@ -208,13 +210,17 @@ export default {
       try {
         const physicsService = require('../services/game/physicsService.ts').default
         physicsService.stop()
-      } catch (_) {}
+      } catch (err) {
+        debug('Failed to stop physics service', { error: err })
+      }
       
       // Stop timer
       try {
         const gs = useGameStateStore()
         gs.stopTimer()
-      } catch (_) {}
+      } catch (err) {
+        debug('Failed to stop timer', { error: err })
+      }
       
       // Disconnect from collaboration
       this.disconnectCollab()
@@ -223,13 +229,17 @@ export default {
       try {
         const gs = useGameStateStore()
         gs.reset()
-      } catch (_) {}
+      } catch (err) {
+        warn('Failed to reset game state', { error: err })
+      }
       
       // Clean up mode manager
       try {
         const gameModeManager = require('../services/game/GameModeManager.ts').default
         gameModeManager.cleanup()
-      } catch (_) {}
+      } catch (err) {
+        debug('Failed to cleanup game mode manager', { error: err })
+      }
       
     },
     initTimer() {
@@ -371,12 +381,11 @@ export default {
       } else if (msg.type === 'action') {
         const a = msg.payload || {}
         if (a.kind === 'add') {
-          // DEBUG: Log what PC received
-          console.log('💻 PC RECEIVED ITEM:', {
+          // Log what PC received for debugging
+          debug('PC received item from collaboration', {
             itemTitle: a.item?.title,
             addedBy: a.item?.addedBy,
-            accentColor: a.item?.accentColor,
-            fullItem: a.item
+            accentColor: a.item?.accentColor
           })
           
           // dedupe by tmdb id + normalized type
@@ -389,9 +398,9 @@ export default {
           })
           if (!exists) {
             gb.addItem(a.item)
-            console.log('✅ PC ADDED ITEM TO BOARD')
+            debug('PC added item to board')
           } else {
-            console.log('⚠️ PC SKIPPED - ITEM ALREADY EXISTS')
+            debug('PC skipped item - already exists', { tmdbId, type })
           }
         } else if (a.kind === 'connect') {
           // dedupe by unordered pair keys
@@ -419,31 +428,11 @@ export default {
       const s = total % 60
       return `${m}:${s.toString().padStart(2, '0')}`
     },
-    enterZenFreePlay() {
-      this.resultModal.visible = false
-      try {
-        const zenMode = { id: 'zen', name: 'Zen Mode', title: 'Zen Mode' }
-        this.$emit('mode-changed', zenMode)
-        if (this.gameMode && this.gameMode.id !== 'zen') {
-          this.gameMode.id = 'zen'
-        }
-        const gb = this.$refs.gameBoard
-        if (gb && typeof gb.checkGoalCompletion === 'function') {
-          gb.checkGoalCompletion()
-        }
-        const pair = this.resultModal?.losingPair
-        if (gb && pair && typeof gb.createConnection === 'function') {
-          const from = gb.gameItems.find((i) => i.id === pair.fromId)
-          const to = gb.gameItems.find((i) => i.id === pair.toId)
-          if (from && to) {
-            gb.createConnection(from, to)
-          }
-        }
-        // Show bottom bar and clear highlight when entering Free Play from modal
-        this.bottomBarVisible = true
-        this.highlightPathIds = []
-      } catch (_) {}
-    },
+     handleEnterZenFreePlay() {
+       // Use composable to enter free play
+       const resultModalRef = { value: this.resultModal }
+       this.enterZenFreePlay(resultModalRef, this.gameMode, this.$refs.gameBoard)
+     },
     async onHintRequested(item) {
       // Delegate to GameSearchPanel component
       this.$refs.gameSearchPanel?.onHintRequested(item)
@@ -469,9 +458,11 @@ export default {
       return this.getStartingItemsComposable(this.gameMode, this.gameOptions)
     },
     onConnectionCreated(data) {
-      log('info', '🔗 Connection created:', data)
-      console.log('🔗 Full data object:', data)
-      console.log('🔗 Data keys:', Object.keys(data))
+      debug('Connection created', { 
+        connectionId: data.connection?.id,
+        fromId: data.from?.id || data.connection?.from,
+        toId: data.to?.id || data.connection?.to
+      })
       const gs = useGameStateStore()
       
       // The emit sends { connection, from, to }
@@ -479,41 +470,46 @@ export default {
       const from = data.from || connection.fromItem
       const to = data.to || connection.toItem
       
-      console.log('🔗 Connection items found:', { from, to, connection })
+      debug('Connection items resolved', { 
+        from: from?.name || from?.title, 
+        to: to?.name || to?.title 
+      })
       
       if (from && to) {
         // Show popup for successful connection
-        console.log('🔗 Calling PopupService.showConnectionSuccess')
         PopupService.showConnectionSuccess(from, to)
         
         // Broadcast to phone via collaboration
         this.broadcastConnection(from, to)
       } else {
-        console.warn('🔗 Connection items not found!', { fromId: connection?.from, toId: connection?.to, connection, data })
+        warn('Connection items not found', { 
+          fromId: connection?.from, 
+          toId: connection?.to 
+        })
       }
     },
     async onCheckGoals(connections) {
-      console.log('🎯 onCheckGoals called with', connections.length, 'connections')
+      debug('onCheckGoals called', { connectionCount: connections.length })
       // Use composable to handle goal checking
       const gb = this.$refs.gameBoard
       const gameItems = gb?.gameItems?.value || gb?.gameItems || []
-      console.log('🎯 Checking goals with', gameItems.length, 'items and', connections.length, 'connections')
+      debug('Checking goals', { 
+        itemCount: gameItems.length, 
+        connectionCount: connections.length 
+      })
       const result = await this.handleCheckGoals(connections, this.gameOptions, gameItems)
       if (result) {
-        console.log('🎉 Win condition detected, calling onGoalCompleted')
+        debug('Win condition detected, calling onGoalCompleted')
         this.onGoalCompleted(result)
       }
     },
     onGoalCompleted(goalData) {
-      console.log('🎉 onGoalCompleted received:', goalData)
-      // Directly show the win modal
-      this.resultModal = {
-        visible: true,
-        type: 'win',
-        title: 'You Win!',
-        subtitle: goalData?.message || 'Goal completed!',
-        stats: goalData?.stats || {},
-      }
+      debug('onGoalCompleted received', { goalData })
+      // Delegate to composable so it saves pathIds and controls modal/bottom bar
+      const resultModalRef = { value: this.resultModal }
+      // Pass PvP handler if available (optional)
+      const pvpHandler = this.handlePvPGoalCompletion || undefined
+      this.handleGoalCompleted(goalData, this.gameOptions, this.roomCode, pvpHandler, resultModalRef)
     },
     onGoalAdvanced(goalData) {
       // Use composable to handle goal advancement
@@ -523,10 +519,11 @@ export default {
       // Use composable to add new starting items
       this.handleAddNewStartingItems(nextGoal, this.$refs.gameBoard, this.gameOptions)
     },
-    onShowPath() {
-      // Use composable to show path
-      this.handleShowPath(this.resultModal)
-    },
+     onShowPath() {
+       // Use composable to show path (expects a ref-like object and gameMode)
+       const resultModalRef = { value: this.resultModal }
+       this.handleShowPath(resultModalRef, this.gameMode)
+     },
     // Bottom bar: Hide Path clears highlight and flips to Show Path + New Game
     hidePathFromBar() {
       // Use composable to hide path
@@ -549,18 +546,27 @@ export default {
         
         if (nextIndex < episodes.length) {
           const nextEpisode = episodes[nextIndex]
-          console.log('🎬 Advancing to next episode:', nextIndex + 1, nextEpisode)
+          debug('Advancing to next episode', { 
+            episodeIndex: nextIndex + 1, 
+            episodeName: nextEpisode.name 
+          })
           
           // Validate next episode before loading
           const validationResult = validate.episode(nextEpisode)
           if (!validationResult.valid) {
-            console.error('Next episode validation failed:', validationResult.errors)
+            logError('Next episode validation failed', { 
+              errors: validationResult.errors,
+              episodeIndex: nextIndex + 1
+            })
             notify.error(`Cannot load next episode: ${validationResult.errors.join(', ')}`)
             return
           }
           
           if (validationResult.warnings.length > 0) {
-            console.warn('Next episode validation warnings:', validationResult.warnings)
+            warn('Next episode validation warnings', { 
+              warnings: validationResult.warnings,
+              episodeIndex: nextIndex + 1
+            })
           }
           
           // Update the current episode index
@@ -591,7 +597,7 @@ export default {
     },
     onFinishShow() {
       // Finish the show and go back to mode selection
-      console.log('🎬 Show finished!')
+      debug('Show finished!')
       this.$emit('finish-show')
     },
     resetGameForNewEpisode() {
@@ -650,9 +656,11 @@ export default {
     },
   },
   async mounted() {
-    console.log('🎯 Game mounted - Goal queue:', this.gameOptions?.goalQueue)
-    console.log('🎯 Game mode:', this.gameMode?.id)
-    console.log('🎯 Current goal index:', this.gameOptions?.currentGoalIndex)
+    debug('Game mounted', { 
+      goalQueue: this.gameOptions?.goalQueue,
+      gameMode: this.gameMode?.id,
+      currentGoalIndex: this.gameOptions?.currentGoalIndex
+    })
     
     // Initialize backgrounds
     await this.initializeBackgrounds()
@@ -663,7 +671,9 @@ export default {
     try {
       const gs = useGameStateStore()
       gs.updateGameOptions(this.gameOptions)
-    } catch (_) {}
+    } catch (err) {
+      warn('Failed to update game options in store', { error: err })
+    }
     
     try {
       this.setRoomCodeFromOptions(this.gameOptions)
@@ -671,7 +681,9 @@ export default {
         gs.setRoomCode(this.roomCode)
         this.initCollab()
       }
-    } catch (_) {}
+    } catch (err) {
+      warn('Failed to set room code or initialize collaboration', { error: err, roomCode: this.roomCode })
+    }
     
   },
   beforeUnmount() {

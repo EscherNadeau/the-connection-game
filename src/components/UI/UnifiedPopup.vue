@@ -94,8 +94,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-// @ts-ignore
 import PopupService from '../../services/ui/PopupService.ts'
+import { debug } from '../../services/ui/log.ts'
 import type { UnifiedPopupProps, UnifiedPopupEmits } from '../../types/game'
 
 const props = defineProps<UnifiedPopupProps>()
@@ -148,7 +148,7 @@ const hasNextEpisode = computed(() => {
 })
 
 const handlePopup = (popupData: any) => {
-  console.log('UnifiedPopup handlePopup called with type:', popupData.type)
+  debug('UnifiedPopup handlePopup called', { type: popupData.type })
   switch (popupData.type) {
     case 'connection_success':
       showConnectionSuccessPopup(popupData)
@@ -166,7 +166,7 @@ const handlePopup = (popupData: any) => {
       showGameEndPopup(popupData)
       break
     case 'error':
-      console.log('UnifiedPopup handling error popup:', popupData)
+      debug('UnifiedPopup handling error popup', { popupData })
       showCustomErrorPopup(popupData)
       break
     case 'dismiss':
@@ -342,9 +342,9 @@ const clearTimeoutById = (type: string) => {
 }
 
 onMounted(() => {
-  console.log('UnifiedPopup mounted, setting up PopupService listener')
+  debug('UnifiedPopup mounted, setting up PopupService listener')
   unsubscribe = PopupService.on((popupData: any) => {
-    console.log('UnifiedPopup received popup data:', popupData)
+    debug('UnifiedPopup received popup data', { popupData })
     handlePopup(popupData)
   })
 })

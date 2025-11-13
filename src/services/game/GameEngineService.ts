@@ -1,10 +1,10 @@
-import { log } from '../ui/log.ts'
-import type { GameItem, Connection } from '../../types/game'
+import { debug, warn } from '../ui/log'
+import type { GameItem, Connection, GameOptions } from '../../types/game'
 
 class GameEngineService {
   private gameItems: GameItem[] = []
   private connections: Connection[] = []
-  private gameOptions: any = null
+  private gameOptions: GameOptions | null = null
   private canvasWidth: number = 50000
   private canvasHeight: number = 50000
   private centerX: number = 25000
@@ -12,27 +12,49 @@ class GameEngineService {
   private physicsEnabled: boolean = true
   private collisionEnabled: boolean = true
 
-  initialize(gameOptions: any, gameItems: GameItem[], connections: Connection[]): void {
+  /**
+   * Initialize the game engine service
+   * @param gameOptions - Game configuration options
+   * @param gameItems - Array of game items
+   * @param connections - Array of connections
+   */
+  initialize(gameOptions: GameOptions, gameItems: GameItem[], connections: Connection[]): void {
     this.gameOptions = gameOptions
     this.gameItems = gameItems
     this.connections = connections
-    log(602, { count: 'Game Engine Service initialized' })
+    debug('Game Engine Service initialized', { itemCount: gameItems.length, connectionCount: connections.length })
   }
 
+  /**
+   * Update game state with new items and connections
+   * @param gameItems - Updated array of game items
+   * @param connections - Updated array of connections
+   */
   updateGameState(gameItems: GameItem[], connections: Connection[]): void {
     this.gameItems = gameItems
     this.connections = connections
   }
 
+  /**
+   * Set canvas dimensions and update center point
+   * @param width - Canvas width
+   * @param height - Canvas height
+   */
   setCanvasDimensions(width: number, height: number): void {
     this.canvasWidth = width
     this.canvasHeight = height
     this.centerX = width / 2
     this.centerY = height / 2
-    log(602, { count: `Canvas dimensions set: ${width}x${height}` })
+    debug('Canvas dimensions set', { width, height, centerX: this.centerX, centerY: this.centerY })
   }
 
-  placeItemRandomly(item, avoidCenter = false) {
+  /**
+   * Place an item randomly on the canvas
+   * @param item - Game item to place
+   * @param avoidCenter - Whether to avoid placing near center
+   * @returns Position coordinates
+   */
+  placeItemRandomly(item: GameItem, avoidCenter = false): { x: number; y: number } {
     let x, y
     let attempts = 0
     const maxAttempts = 50
@@ -51,17 +73,24 @@ class GameEngineService {
     if (attempts >= maxAttempts) {
       x = this.centerX + (Math.random() - 0.5) * 100
       y = this.centerY + (Math.random() - 0.5) * 100
-      log(1004, { state: 'Max placement attempts reached, using fallback position' })
+      warn('Max placement attempts reached, using fallback position', { item: item.name, attempts })
     }
     item.x = x
     item.y = y
     item.vx = 0
     item.vy = 0
-    log(300, { x: item.x, y: item.y, item: item.name })
+    debug('Item placed randomly', { item: item.name, x, y })
     return { x, y }
   }
 
-  placeItemNearSource(sourceItem, newItem, offset = 250) {
+  /**
+   * Place an item near a source item
+   * @param sourceItem - Source item to place near
+   * @param newItem - Item to place
+   * @param offset - Distance offset from source
+   * @returns Position coordinates
+   */
+  placeItemNearSource(sourceItem: GameItem, newItem: GameItem, offset = 250): { x: number; y: number } {
     const angle = Math.random() * 2 * Math.PI
     const distance = offset + Math.random() * 100
     let x = sourceItem.x + Math.cos(angle) * distance
@@ -77,11 +106,18 @@ class GameEngineService {
     newItem.y = y
     newItem.vx = 0
     newItem.vy = 0
-    log(300, { x: newItem.x, y: newItem.y, item: newItem.name, source: sourceItem.name })
+    debug('Item placed near source', { item: newItem.name, source: sourceItem.name, x, y })
     return { x, y }
   }
 
-  wouldCollideWithExistingItems(item, x, y) {
+  /**
+   * Check if placing an item at given coordinates would collide with existing items
+   * @param item - Game item to check
+   * @param x - X coordinate
+   * @param y - Y coordinate
+   * @returns True if collision would occur
+   */
+  wouldCollideWithExistingItems(item: GameItem, x: number, y: number): boolean {
     if (!this.collisionEnabled) return false
     const itemRadius = this.getItemRadius(item)
     for (const existingItem of this.gameItems) {
@@ -93,7 +129,14 @@ class GameEngineService {
     return false
   }
 
-  findNearestFreePosition(item, preferredX, preferredY) {
+  /**
+   * Find the nearest free position for an item near preferred coordinates
+   * @param item - Game item to place
+   * @param preferredX - Preferred X coordinate
+   * @param preferredY - Preferred Y coordinate
+   * @returns Position coordinates
+   */
+  findNearestFreePosition(item: GameItem, preferredX: number, preferredY: number): { x: number; y: number } {
     const itemRadius = this.getItemRadius(item)
     let bestX = preferredX
     let bestY = preferredY
@@ -117,7 +160,12 @@ class GameEngineService {
     return { x: bestX, y: bestY }
   }
 
-  getItemRadius(item) {
+  /**
+   * Get the radius for an item based on its type
+   * @param item - Game item
+   * @returns Radius in pixels
+   */
+  getItemRadius(item: GameItem): number {
     if (item.type === 'actor' || item.type === 'actress' || item.type === 'person') return 40
     if (item.type === 'movie' || item.type === 'film' || item.type === 'tv') return 60
     return 50
@@ -267,13 +315,22 @@ class GameEngineService {
       if (n > 0) this.applyForce(item, fx, fy)
     }
   }
-  setPhysicsEnabled(enabled) {
+  /**
+   * Enable or disable physics simulation
+   * @param enabled - Whether physics should be enabled
+   */
+  setPhysicsEnabled(enabled: boolean): void {
     this.physicsEnabled = enabled
-    log(602, { count: `Physics ${enabled ? 'enabled' : 'disabled'}` })
+    debug(`Physics ${enabled ? 'enabled' : 'disabled'}`)
   }
-  setCollisionEnabled(enabled) {
+
+  /**
+   * Enable or disable collision detection
+   * @param enabled - Whether collision detection should be enabled
+   */
+  setCollisionEnabled(enabled: boolean): void {
     this.collisionEnabled = enabled
-    log(602, { count: `Collision detection ${enabled ? 'enabled' : 'disabled'}` })
+    debug(`Collision detection ${enabled ? 'enabled' : 'disabled'}`)
   }
   getEngineStats() {
     const active = this.gameItems.filter((i) => Math.abs(i.vx) > 0.1 || Math.abs(i.vy) > 0.1)
@@ -288,14 +345,24 @@ class GameEngineService {
       centerY: this.centerY,
     }
   }
-  resetVelocities() {
+  /**
+   * Reset all item velocities to zero
+   */
+  resetVelocities(): void {
     for (const i of this.gameItems) {
       i.vx = 0
       i.vy = 0
     }
-    log(602, { count: 'All item velocities reset' })
+    debug('All item velocities reset', { itemCount: this.gameItems.length })
   }
-  centerItemsAround(x, y, radius = 1000) {
+
+  /**
+   * Center items around a specific point
+   * @param x - X coordinate of center point
+   * @param y - Y coordinate of center point
+   * @param radius - Radius around center point
+   */
+  centerItemsAround(x: number, y: number, radius = 1000): void {
     for (const i of this.gameItems) {
       const a = Math.random() * 2 * Math.PI
       const d = Math.random() * radius
@@ -304,7 +371,7 @@ class GameEngineService {
       i.vx = 0
       i.vy = 0
     }
-    log(602, { count: `Items centered around (${x}, ${y})` })
+    debug('Items centered around point', { x, y, radius, itemCount: this.gameItems.length })
   }
 }
 

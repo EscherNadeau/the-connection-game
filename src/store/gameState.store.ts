@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import CollabService from '@services/realtime/CollabService.ts'
+import { debug } from '../services/ui/log.ts'
 
 export const useGameStateStore = defineStore('gameState', {
   state: () => ({
@@ -85,7 +86,10 @@ export const useGameStateStore = defineStore('gameState', {
             this.timerEnabled = false
             try {
               if (typeof this._onTimerExpired === 'function') this._onTimerExpired()
-            } catch (_) {}
+            } catch (err) {
+              // Timer expired callback failed - non-critical
+              debug('Timer expired callback failed', { error: err })
+            }
           }
         }
       }, 1000)
@@ -108,7 +112,8 @@ export const useGameStateStore = defineStore('gameState', {
         const hash = window.location.hash || ''
         const m = hash.match(/room=([A-Za-z0-9_-]+)/)
         this.roomCode = m ? m[1] : null
-      } catch (_) {
+      } catch (err) {
+        debug('Failed to set room code from hash', { error: err })
         this.roomCode = null
       }
     },
@@ -121,12 +126,20 @@ export const useGameStateStore = defineStore('gameState', {
       if (this._collabService) {
         try {
           this._collabService.close()
-        } catch (_) {}
+        } catch (err) {
+          // Collab service close failed - non-critical
+          debug('Failed to close collab service', { error: err })
+        }
       }
       const svc = new CollabService(wsUrl)
       this._collabService = svc
       svc.on('open', (info) => {
-        try { this.collabClientId = (info && info.clientId) || null } catch (_) { this.collabClientId = null }
+        try { 
+          this.collabClientId = (info && info.clientId) || null 
+        } catch (err) {
+          debug('Failed to set collab client ID', { error: err })
+          this.collabClientId = null 
+        }
         this.collabConnected = true
       })
       svc.on('close', () => {
@@ -144,20 +157,36 @@ export const useGameStateStore = defineStore('gameState', {
         } else if (msg.type === 'presence') {
           this.playerCount = Number(msg?.payload?.count || 0)
           if (typeof h.onPresence === 'function') {
-            try { h.onPresence({ count: this.playerCount }) } catch (_) {}
+            try { 
+              h.onPresence({ count: this.playerCount }) 
+            } catch (err) {
+              // Presence callback failed - non-critical
+              debug('Presence callback failed', { error: err })
+            }
           }
         } else if (msg.type === 'roster') {
-          try { this.roster = Array.isArray(msg?.payload?.players) ? msg.payload.players : [] } catch (_) { this.roster = [] }
+          try { 
+            this.roster = Array.isArray(msg?.payload?.players) ? msg.payload.players : [] 
+          } catch (err) {
+            // Failed to parse roster - use empty array
+            debug('Failed to parse roster, using empty array', { error: err })
+            this.roster = []
+          }
           
           // Set first player as host
           if (this.roster.length > 0 && !this.hostId) {
             this.hostId = this.roster[0].id
-            console.log('🎮 Host set to first player:', this.hostId)
+            debug('Host set to first player', { hostId: this.hostId })
           }
           
           const onRoster = h.onRoster
           if (typeof onRoster === 'function') {
-            try { onRoster({ players: this.roster }) } catch (_) {}
+            try { 
+              onRoster({ players: this.roster }) 
+            } catch (err) {
+              // Roster callback failed - non-critical
+              debug('Roster callback failed', { error: err })
+            }
           }
         } else if (msg.type === 'action') {
           if (typeof h.onAction === 'function') {
@@ -172,7 +201,10 @@ export const useGameStateStore = defineStore('gameState', {
       if (this._collabService) {
         try {
           this._collabService.close()
-        } catch (_) {}
+        } catch (err) {
+          // Collab service close failed - non-critical
+          debug('Failed to close collab service', { error: err })
+        }
       }
       this._collabService = null
       this.collabConnected = false
@@ -197,7 +229,10 @@ export const useGameStateStore = defineStore('gameState', {
       if (this._collabService) {
         try {
           this._collabService.close()
-        } catch (_) {}
+        } catch (err) {
+          // Collab service close failed - non-critical
+          debug('Failed to close collab service', { error: err })
+        }
       }
     },
   },

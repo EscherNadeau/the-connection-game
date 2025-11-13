@@ -1,4 +1,4 @@
-import { log } from './log.ts'
+import { log, debug } from './log.ts'
 import { multiplayerService } from '../MultiplayerService.ts'
 
 class UIService {
@@ -26,7 +26,8 @@ class UIService {
       } else {
         this.setTheme('dark')
       }
-    } catch (_) {
+    } catch (err) {
+      debug('Failed to load saved theme, using default', { error: err })
       this.setTheme('dark')
     }
     log(602, { count: 'UI Service initialized' })
@@ -248,10 +249,19 @@ class UIService {
 
   setTheme(theme) {
     this.currentTheme = theme
-    try { localStorage.setItem('theme', theme) } catch (_) {}
+    try { 
+      localStorage.setItem('theme', theme) 
+    } catch (err) {
+      // localStorage may be unavailable in private browsing mode
+      // Continue without persistence
+    }
     document.documentElement.setAttribute('data-theme', theme)
     log(602, { count: `Theme set to: ${theme}` })
-    try { window.dispatchEvent(new CustomEvent('themeChange', { detail: { theme } })) } catch (_) {}
+    try { 
+      window.dispatchEvent(new CustomEvent('themeChange', { detail: { theme } })) 
+    } catch (err) {
+      // Event dispatch failed - non-critical, continue
+    }
   }
   getTheme() {
     return this.currentTheme

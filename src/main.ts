@@ -20,10 +20,16 @@ import GameModeManager from '@services/game/GameModeManager.ts'
 import gameSettingsService from '@services/GameSettingsService.ts'
 import uiService from '@services/ui/UIService.ts'
 import utilityService from '@utils/utility.ts'
+import { debug, warn, error as logError } from './services/ui/log.ts'
 import './assets/styles/theme.css'
 
 // Initialize UI service (sets theme and listeners)
-try { uiService.initialize() } catch (_) {}
+try { 
+  uiService.initialize() 
+} catch (err) {
+  // UI service initialization failure is non-critical - app can still function
+  debug('UI service initialization failed', { error: err })
+}
 
 // Create Pinia stores once (usable in dev globals and debug object)
 const filtersStore = useFiltersStore(pinia)
@@ -70,8 +76,8 @@ if (import.meta.env && import.meta.env.DEV) {
       modeManager: GameModeManager,
     },
     help: () => {
-      console.log('Available services:', Object.keys(window.gameDebug.services))
-      console.log('Use: window.gameDebug.services.[serviceName] to access services')
+      debug('Available services', { services: Object.keys(window.gameDebug.services) })
+      debug('Use: window.gameDebug.services.[serviceName] to access services')
     },
     stores: {
       filters: filtersStore,

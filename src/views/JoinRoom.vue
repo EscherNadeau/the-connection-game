@@ -54,7 +54,10 @@ export default {
         } else {
           window.location.hash = `room=${encodeURIComponent(v.toUpperCase())}`
         }
-      } catch (_) {}
+      } catch (err) {
+        // Failed to set hash - continue with emit anyway
+        debug('Failed to set location hash for room join', { error: err, code: v })
+      }
       this.$emit('join', v)
     },
   },

@@ -1,4 +1,4 @@
-// Removed log import - no UI/log side effects
+import { debug, warn, error as logError } from '../ui/log.ts'
 import goalModeService from '../../modes/GoalModeService.ts'
 import hybridModeService from '../../modes/HybridModeService.ts'
 import knowledgeModeService from '../../modes/KnowledgeModeService.ts'
@@ -48,32 +48,39 @@ class GameModeManager {
     this.connections = connections
     this.goalChain = goalChain
 
-    console.log(`🎯 GameModeManager.initialize called with mode: "${gameMode}"`)
-    console.log('🎯 Available mode services:', Object.keys(this.modeServices))
+    debug('GameModeManager.initialize called', { 
+      mode: gameMode,
+      availableServices: Object.keys(this.modeServices)
+    })
     
     // Get the appropriate mode service
     if (gameMode === 'custom') {
-      console.log(`🎯 Custom mode, using gameType: "${gameOptions.gameType}"`)
+      debug('Custom mode detected', { gameType: gameOptions.gameType })
       this.currentModeService = this.modeServices[gameOptions.gameType]
     } else {
-      console.log(`🎯 Regular mode, looking for: "${gameMode}"`)
+      debug('Regular mode', { mode: gameMode })
       this.currentModeService = this.modeServices[gameMode]
     }
 
-    console.log('🎯 Found mode service:', this.currentModeService)
+    debug('Mode service lookup result', { 
+      found: !!this.currentModeService,
+      serviceName: this.currentModeService?.constructor?.name
+    })
 
     if (!this.currentModeService) {
-      console.log(`🎯 ERROR: No mode service found for "${gameMode}"`)
+      logError('No mode service found', { mode: gameMode })
       return false
     }
 
     // Initialize the mode service
-    console.log('🎯 Calling initialize on mode service...')
+    debug('Initializing mode service')
     if (this.currentModeService.initialize) {
-      console.log('🎯 Mode service has initialize method, calling it...')
+      debug('Mode service has initialize method, calling it')
       this.currentModeService.initialize(gameOptions, gameItems, connections, goalChain)
     } else {
-      console.log('🎯 Mode service does NOT have initialize method')
+      warn('Mode service does NOT have initialize method', { 
+        serviceName: this.currentModeService.constructor?.name 
+      })
     }
 
     return true

@@ -1,8 +1,6 @@
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
-// @ts-ignore
 import { getBackgroundUrlsAsync } from '@/services/ui/BackgroundsService.ts'
-// @ts-ignore
-import { log } from '@/services/ui/log.ts'
+import { info, error as logError } from '@/services/ui/log.ts'
 import type { BackgroundData } from '@/types/game'
 
 export function useBackgrounds() {
@@ -63,10 +61,10 @@ export function useBackgrounds() {
         backgroundImages.value = backgroundData
         const randomIndex = Math.floor(Math.random() * urls.length)
         currentBackground.value = urls[randomIndex] || ''
-        log('info', `🎨 Loaded ${urls.length} backgrounds for theme: ${contrastTheme}`)
+        info( `🎨 Loaded ${urls.length} backgrounds for theme: ${contrastTheme}`)
       }
     } catch (error) {
-      log('error', 'Failed to reload backgrounds for theme:', error)
+      logError( 'Failed to reload backgrounds for theme:', error)
     }
   }
 
@@ -79,7 +77,7 @@ export function useBackgrounds() {
     
     const randomIndex = Math.floor(Math.random() * list.length)
     currentBackground.value = list[randomIndex] || ''
-    log('info', '🎨 Changed background to:', currentBackground.value)
+    info('🎨 Changed background to:', currentBackground.value)
   }
 
   /**
@@ -107,9 +105,9 @@ export function useBackgrounds() {
       const theme = document.documentElement.getAttribute('data-theme') || 'dark'
       await reloadBackgroundsForTheme(theme)
       window.addEventListener('themeChange', onThemeChange)
-      log('info', '🎨 Backgrounds initialized for theme:', theme)
+      info('🎨 Backgrounds initialized for theme:', theme)
     } catch (error) {
-      log('error', 'Failed to initialize backgrounds:', error)
+      logError( 'Failed to initialize backgrounds:', error)
     }
   }
 

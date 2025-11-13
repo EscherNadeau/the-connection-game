@@ -52,10 +52,8 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { Ref } from 'vue'
 import type { SearchResult, SearchPanelProps, SearchPanelEmits } from '../types/game'
 
-// @ts-ignore
 import tmdbCache from '../services/cache/tmdbCache.ts'
-// @ts-ignore
-import { log } from '../services/ui/log.ts'
+import { error as logError } from '../services/ui/log.ts'
 
 const props = withDefaults(defineProps<SearchPanelProps>(), {
   modelValue: '',
@@ -177,7 +175,7 @@ const performSearch = async () => {
       tmdbId: r.id
     }))
   } catch (error: any) {
-    log('error', `Search failed for "${searchQuery.value}": ${error.message}`)
+    logError(`Search failed for "${searchQuery.value}": ${error.message}`)
     searchResults.value = []
   } finally {
     isSearching.value = false

@@ -87,6 +87,7 @@ import { useFiltersStore } from '@store/filters.store.ts'
 import { useGameStateStore } from '@store/gameState.store.ts'
 import { getRandomQuestion } from '../services/game/questions.ts'
 import config from '@/config/env'
+import { debug, warn, error as logError } from '../services/ui/log.ts'
 
 export default {
   name: 'ControllerView',
@@ -119,7 +120,8 @@ export default {
       try {
         const gs = useGameStateStore()
         return gs.gameStatus
-      } catch (_) {
+      } catch (err) {
+        debug('Failed to get game status', { error: err })
         return 'idle'
       }
     },
@@ -127,7 +129,8 @@ export default {
       try {
         const gs = useGameStateStore()
         return gs.collabConnected
-      } catch (_) {
+      } catch (err) {
+        debug('Failed to get collab connection status', { error: err })
         return false
       }
     },
@@ -155,7 +158,10 @@ export default {
         const od = result && result.originalData ? result.originalData : {}
         const path = od.poster_path || od.profile_path || od.backdrop_path || ''
         if (path) return `https://image.tmdb.org/t/p/original${path}`
-      } catch (_) {}
+      } catch (err) {
+        // Failed to extract image path - return empty string
+        debug('Failed to get result image', { error: err })
+      }
       return ''
     },
     saveProfile() {
@@ -165,15 +171,23 @@ export default {
         if (gs.collabConnected) {
           gs.sendCollab('action', { kind: 'profile', name: String(this.profileName || '').trim(), color: String(this.profileColor || '').trim() })
         }
-      } catch (_) {}
-      try { localStorage.setItem('controllerProfile', JSON.stringify({ name: this.profileName, color: this.profileColor })) } catch (_) {}
+      } catch (err) {
+        warn('Failed to send profile to collab', { error: err })
+      }
+      try { 
+        localStorage.setItem('controllerProfile', JSON.stringify({ name: this.profileName, color: this.profileColor })) 
+      } catch (err) {
+        // localStorage may be unavailable - continue without persistence
+      }
       this.profileReady = true
       this.setStatus('Joined')
       // Request prompt only; host will publish
       try {
         const gs = useGameStateStore()
         if (gs.collabConnected) gs.sendCollab('action', { kind: 'prompt_request' })
-      } catch (_) {}
+      } catch (err) {
+        debug('Failed to request prompt', { error: err })
+      }
       
       // Clear prompt after 10 seconds as fallback (game should start by then)
       setTimeout(() => {
@@ -189,7 +203,10 @@ export default {
           if (gs.gameItems && gs.gameItems.length > 0 && this.prompt) {
             this.prompt = ''
           }
-        } catch (_) {}
+        } catch (err) {
+          // Game state check failed - non-critical
+          debug('Failed to check game state', { error: err })
+        }
       }, 500) // Check every 500ms for faster response
     },
     setStatus(msg) {
@@ -230,9 +247,12 @@ export default {
           mediaType: 'all',
         })
         this.searchResults = searchResult.success ? searchResult.results.slice(0, 8) : []
-        console.log(`Search for "${this.searchQuery}" returned ${this.searchResults.length} results`)
-      } catch (error) {
-        console.error('Search error:', error)
+        debug('Search completed', { 
+          query: this.searchQuery, 
+          resultCount: this.searchResults.length 
+        })
+      } catch (err) {
+        logError('Search error', { error: err, query: this.searchQuery })
         this.searchResults = []
       } finally {
         this.isSearching = false
@@ -264,12 +284,11 @@ export default {
           tmdbData: result.originalData,
         }
         
-        // DEBUG: Log player submission details
-        console.log('📱 PHONE SUBMIT:', {
+        // Log player submission details
+        debug('Phone submit', {
           playerName: this.profileName,
           answer: result.title || result.name,
-          colorHex: this.profileColor,
-          timestamp: new Date().toISOString()
+          colorHex: this.profileColor
         })
         
         if (gs.collabConnected) {
@@ -277,13 +296,12 @@ export default {
           if (this.profileColor) gameItem.accentColor = this.profileColor
           if (this.profileName) gameItem.addedBy = this.profileName
           
-          // DEBUG: Log what's being sent
-          console.log('📤 SENDING TO PC:', {
+          // Log what's being sent
+          debug('Sending to PC', {
             kind: 'add',
             itemTitle: gameItem.title,
             addedBy: gameItem.addedBy,
-            accentColor: gameItem.accentColor,
-            fullItem: gameItem
+            accentColor: gameItem.accentColor
           })
           
           gs.sendCollab('action', { kind: 'add', item: gameItem })
@@ -309,7 +327,8 @@ export default {
         } else {
           this.setStatus('Not connected')
         }
-      } catch (_) {
+      } catch (err) {
+        logError('Error selecting search result', { error: err })
         this.setStatus('Error')
       }
       this.clearSearch()
@@ -327,7 +346,8 @@ export default {
         } else {
           this.setStatus('Not connected')
         }
-      } catch (_) {
+      } catch (err) {
+        logError('Error starting game', { error: err })
         this.setStatus('Error starting game')
       }
     },
@@ -338,16 +358,19 @@ export default {
       gs.setRoomCodeFromHash()
       this.roomCode = gs.roomCode
       if (this.roomCode) {
-        console.log('Controller: Connecting to room', this.roomCode)
+        debug('Controller: Connecting to room', { roomCode: this.roomCode })
         gs.connectCollab(config.wsUrl)
       } else {
-        console.log('Controller: No room code found')
+        warn('Controller: No room code found')
         this.setStatus('No room code')
       }
       // Clear the prompt when the host starts the game and broadcasts state
       try { gs.setCollabHandlers({ 
         onState: (state) => { 
-          console.log('Controller: Received state', state)
+          debug('Controller: Received state', { 
+            itemCount: state?.items?.length || 0,
+            connectionCount: state?.connections?.length || 0
+          })
           // Check if game has already started (has items)
           if (state && state.items && state.items.length > 0) {
             this.prompt = ''
@@ -369,7 +392,7 @@ export default {
           }
         }, 
         onAction: (payload) => {
-          console.log('Controller: Received action', payload)
+          debug('Controller: Received action', { kind: payload?.kind })
           if (payload && payload.kind === 'prompt' && typeof payload.text === 'string') {
             this.prompt = payload.text
           }
@@ -417,14 +440,19 @@ export default {
               if (window.location.hash) {
                 window.location.hash = ''
               }
-            } catch (_) {}
+            } catch (err) {
+              // Failed to clear hash - non-critical
+              debug('Failed to clear location hash', { error: err })
+            }
             // Force update to show the reset UI
             // Game ended - no popup needed on mobile
           }
           // Handle connection events from PC - no popups needed on mobile
           // Handle win/lose events from PC - no popups needed on mobile
         }
-      }) } catch (_) {}
+      }) } catch (err) {
+        warn('Failed to set collab handlers', { error: err })
+      }
       // Do not auto-skip the profile screen; only prefill fields
       try {
         const p = JSON.parse(localStorage.getItem('controllerProfile') || 'null')
@@ -432,8 +460,13 @@ export default {
           this.profileName = p.name
           this.profileColor = p.color
         }
-      } catch (_) {}
-    } catch (_) {}
+      } catch (err) {
+        // Failed to load saved profile - continue without it
+        debug('Failed to load saved profile', { error: err })
+      }
+    } catch (err) {
+      logError('Error in Controller mounted', { error: err })
+    }
   },
   beforeUnmount() {
     // Clean up interval

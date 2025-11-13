@@ -1,83 +1,108 @@
-import { log } from '../ui/log.ts'
+import { log, debug, warn, error as logError } from '../ui/log'
 import {
   MEDIA_TYPES,
   normalizeMediaType,
   isPersonType,
   isMediaType,
-} from '../../utils/constants.ts'
-import tmdbCache from '../cache/tmdbCache.ts'
-import { shortestPathLength } from '../../utils/graph.ts'
-import type { GameItem, Connection, TMDBCredits } from '../../types/game'
+} from '../../utils/constants'
+import tmdbCache from '../cache/tmdbCache'
+import { shortestPathLength } from '../../utils/graph'
+import type { GameItem, Connection, TMDBCredits, GameOptions } from '../../types/game'
 
 class ConnectionService {
   private gameItems: GameItem[] = []
   private connections: Connection[] = []
-  private gameOptions: any = null
+  private gameOptions: GameOptions | null = null
 
-  initialize(gameOptions: any, gameItems: GameItem[], connections: Connection[]): void {
+  /**
+   * Initialize the connection service with game state
+   * @param gameOptions - Game configuration options
+   * @param gameItems - Array of game items
+   * @param connections - Array of connections
+   */
+  initialize(gameOptions: GameOptions, gameItems: GameItem[], connections: Connection[]): void {
     this.gameOptions = gameOptions
     this.gameItems = gameItems
     this.connections = connections
-    log(602, { count: 'Connection Service initialized' })
+    debug('Connection Service initialized', { itemCount: gameItems.length, connectionCount: connections.length })
   }
 
+  /**
+   * Update game state with new items and connections
+   * @param gameItems - Updated array of game items
+   * @param connections - Updated array of connections
+   */
   updateGameState(gameItems: GameItem[], connections: Connection[]): void {
     this.gameItems = gameItems
     this.connections = connections
   }
 
   /**
-   * Check if two items can be connected
+   * Check if two items can be connected based on their types
+   * @param item1 - First game item
+   * @param item2 - Second game item
+   * @returns True if items can be connected (person ↔ media)
    */
   canItemsConnect(item1: GameItem, item2: GameItem): boolean {
     if (!item1.type || !item2.type) {
-      log(1004, { state: `Type check failed: item1.type=${item1.type}, item2.type=${item2.type}` })
-      log(2001, { state: { item1, item2 } })
+      warn('Type check failed', { item1Type: item1.type, item2Type: item2.type, item1, item2 })
       return false
     }
     const type1 = normalizeMediaType(item1.type)
     const type2 = normalizeMediaType(item2.type)
-    log(2000, {
-      message: `Checking connection: ${item1.name} (${type1}) ↔ ${item2.name} (${type2})`,
+    debug('Checking connection', { 
+      item1: item1.name, 
+      type1, 
+      item2: item2.name, 
+      type2 
     })
     const isPerson1 = isPersonType(type1)
     const isPerson2 = isPersonType(type2)
     const isMedia1 = isMediaType(type1)
     const isMedia2 = isMediaType(type2)
     const canConnect = (isPerson1 && isMedia2) || (isPerson2 && isMedia1)
-    log(2000, {
-      message: `Type check: Person1=${isPerson1}, Person2=${isPerson2}, Media1=${isMedia1}, Media2=${isMedia2}`,
+    debug('Connection type check', {
+      isPerson1,
+      isPerson2,
+      isMedia1,
+      isMedia2,
+      canConnect
     })
-    log(2000, { message: `Result: ${canConnect ? 'CAN CONNECT' : 'CANNOT CONNECT'}` })
     return canConnect
   }
 
   /**
-   * Check if two items are related (using TMDB data)
+   * Check if two items are related using TMDB data
+   * @param item1 - First game item
+   * @param item2 - Second game item
+   * @returns True if items are related (person appears in media)
    */
   async checkIfItemsAreRelated(item1: GameItem, item2: GameItem): Promise<boolean> {
     if (!item1.type || !item2.type) {
-      log(1004, { state: `Type check failed: item1.type=${item1.type}, item2.type=${item2.type}` })
+      warn('Type check failed for relationship check', { item1Type: item1.type, item2Type: item2.type })
       return false
     }
     const item1Id = item1.tmdbId || item1.tmdbData?.id
     const item2Id = item2.tmdbId || item2.tmdbData?.id
     if (!item1Id || !item2Id) {
-      log(1004, { state: `TMDB ID check failed: item1.id=${item1Id}, item2.id=${item2Id}` })
+      warn('TMDB ID check failed', { item1Id, item2Id })
       return false
     }
     try {
       const type1 = normalizeMediaType(item1.type)
       const type2 = normalizeMediaType(item2.type)
-      log(2000, {
-        message: `Checking relationship: ${item1.name} (${type1}) ↔ ${item2.name} (${type2})`,
+      debug('Checking relationship', {
+        item1: item1.name,
+        type1,
+        item2: item2.name,
+        type2
       })
       const isPerson1 = isPersonType(type1)
       const isPerson2 = isPersonType(type2)
       const isMedia1 = isMediaType(type1)
       const isMedia2 = isMediaType(type2)
       if (!((isPerson1 && isMedia2) || (isPerson2 && isMedia1))) {
-        log(2000, { message: `Type mismatch - cannot be related` })
+        debug('Type mismatch - cannot be related')
         return false
       }
       let personItem, mediaItem
@@ -91,8 +116,13 @@ class ConnectionService {
       const personId = personItem.tmdbId || personItem.tmdbData?.id
       const mediaId = mediaItem.tmdbId || mediaItem.tmdbData?.id
       const mediaType = normalizeMediaType(mediaItem.type)
-      log(2000, {
-        message: `Checking relationship: Person ${personItem.name || personItem.title} (ID: ${personId}, Type: ${personItem.type}) ↔ Media ${mediaItem.name || mediaItem.title} (ID: ${mediaId}, Type: ${mediaType})`,
+      debug('Checking relationship details', {
+        person: personItem.name || personItem.title,
+        personId,
+        personType: personItem.type,
+        media: mediaItem.name || mediaItem.title,
+        mediaId,
+        mediaType
       })
       let areRelated = false
 
@@ -107,11 +137,13 @@ class ConnectionService {
             (cr) => String(cr.id) === String(mediaId) && normalizeMediaType(cr.media_type) === mediaType
           )
           if (found) {
-            log(2000, { message: 'Relationship confirmed via person filmography (fast path)' })
+            debug('Relationship confirmed via person filmography (fast path)')
             areRelated = true
           }
         }
-      } catch (_) {}
+      } catch (err) {
+        debug('Filmography check failed, will try fallback', { error: err })
+      }
 
       // Fallback: fetch media cast if not confirmed via filmography
       if (!areRelated) {
@@ -148,42 +180,65 @@ class ConnectionService {
             }
           )
         }
-      } catch {}
-      log(2000, { message: `Relationship check result: ${areRelated ? 'RELATED' : 'NOT RELATED'}` })
+      } catch (err) {
+        debug('Failed to cache connection in TMDB cache', { error: err })
+      }
+      debug('Relationship check result', { areRelated })
       return areRelated
-    } catch (error) {
-      log(1001, { error: `Error checking relationship: ${error.message}` })
+    } catch (err) {
+      logError('Error checking relationship', { 
+        error: err instanceof Error ? err.message : String(err),
+        item1: item1.name,
+        item2: item2.name
+      })
       return false
     }
   }
 
   /**
    * Create a connection between two items
-   * @param {GameItem} sourceItem - Source item
-   * @param {GameItem} targetItem - Target item
-   * @returns {Connection} Created connection
+   * @param sourceItem - Source item
+   * @param targetItem - Target item
+   * @returns Created connection object
    */
-  createConnection(sourceItem, targetItem) {
-    const connection = {
+  createConnection(sourceItem: GameItem, targetItem: GameItem): Connection {
+    const connection: Connection = {
       id: `conn-${Date.now()}-${Math.random()}`,
       from: sourceItem.id,
       to: targetItem.id,
       fromItem: sourceItem,
       toItem: targetItem,
     }
-    log(602, { count: `Connection created: ${sourceItem.name} → ${targetItem.name}` })
+    debug('Connection created', { 
+      from: sourceItem.name, 
+      to: targetItem.name,
+      connectionId: connection.id
+    })
     return connection
   }
 
-  addConnection(connection) {
+  /**
+   * Add a connection to the connections array
+   * @param connection - Connection to add
+   */
+  addConnection(connection: Connection): void {
     this.connections.push(connection)
-    log(602, { count: `Connection added to array. Total connections: ${this.connections.length}` })
+    debug('Connection added', { 
+      totalConnections: this.connections.length,
+      connectionId: connection.id
+    })
   }
-  removeConnection(connectionId) {
+
+  /**
+   * Remove a connection by ID
+   * @param connectionId - ID of connection to remove
+   * @returns Removed connection or null if not found
+   */
+  removeConnection(connectionId: string): Connection | null {
     const i = this.connections.findIndex((c) => c.id === connectionId)
     if (i !== -1) {
       const r = this.connections.splice(i, 1)[0]
-      log(602, { count: `Connection removed: ${r.from} → ${r.to}` })
+      debug('Connection removed', { from: r.from, to: r.to, connectionId })
       return r
     }
     return null
@@ -195,15 +250,20 @@ class ConnectionService {
         (conn.from === item2.id && conn.to === item1.id)
     )
   }
-  checkPathBetweenItems(startItem, endItem) {
-    log(3234, {
-      message: 'Path check: Looking for path from',
+  /**
+   * Check if a path exists between two items
+   * @param startItem - Starting item
+   * @param endItem - Ending item
+   * @returns True if a path exists between the items
+   */
+  checkPathBetweenItems(startItem: GameItem, endItem: GameItem): boolean {
+    debug('Path check', {
       start: startItem.name,
-      end: endItem.name,
+      end: endItem.name
     })
     const d = shortestPathLength(startItem.id, endItem.id, this.connections)
     const found = d >= 0
-    log(found ? 3248 : 3249, { message: found ? 'Path found!' : 'No path found', length: d })
+    debug(found ? 'Path found' : 'No path found', { length: d })
     return found
   }
   getConnectedItems(itemId) {
@@ -233,10 +293,17 @@ class ConnectionService {
   getConnectionsForItem(itemId) {
     return this.connections.filter((c) => c.from === itemId || c.to === itemId)
   }
-  async checkPersonInMedia(personId, mediaId, mediaType) {
+  /**
+   * Check if a person appears in a media item's cast
+   * @param personId - TMDB person ID
+   * @param mediaId - TMDB media ID
+   * @param mediaType - Type of media (movie, tv, etc.)
+   * @returns True if person is in the media cast
+   */
+  async checkPersonInMedia(personId: string | number, mediaId: string | number, mediaType: string): Promise<boolean> {
     try {
-      log(2000, { message: `Checking if person ${personId} was in ${mediaType} ${mediaId}` })
-      let credits
+      debug('Checking if person in media', { personId, mediaId, mediaType })
+      let credits: TMDBCredits | null = null
       if (mediaType === 'movie' || mediaType === 'film') {
         const movie = await tmdbCache.getMovieWithCast(mediaId)
         credits = movie ? { cast: movie.cast || [] } : null
@@ -244,14 +311,14 @@ class ConnectionService {
         const tv = await tmdbCache.getTVShowWithCast(mediaId)
         credits = tv ? { cast: tv.cast || [] } : null
       } else {
-        log(1004, { state: `Unknown media type: ${mediaType}` })
+        warn('Unknown media type', { mediaType })
         return false
       }
       if (!credits || !credits.cast) {
-        log(2000, { message: `No credits found for ${mediaType} ${mediaId}` })
+        debug('No credits found', { mediaType, mediaId })
         return false
       }
-      const personIdNum = parseInt(personId)
+      const personIdNum = typeof personId === 'string' ? parseInt(personId) : personId
       const personInCast = credits.cast.some((c) => {
         const castId = c.id
         return (
@@ -259,16 +326,19 @@ class ConnectionService {
           castId.toString() === personId.toString()
         )
       })
-      log(2000, { message: `Person ${personId} (${typeof personId}) in cast: ${personInCast}` })
-      log(2000, {
-        message: `Cast member IDs: ${credits.cast
-          .slice(0, 5)
-          .map((m) => m.id)
-          .join(', ')}`,
+      debug('Person in cast check result', { 
+        personId, 
+        personInCast,
+        sampleCastIds: credits.cast.slice(0, 5).map((m) => m.id)
       })
       return personInCast
-    } catch (error) {
-      log(1001, { error: `Error checking person in media: ${error.message}` })
+    } catch (err) {
+      logError('Error checking person in media', { 
+        error: err instanceof Error ? err.message : String(err),
+        personId,
+        mediaId,
+        mediaType
+      })
       return false
     }
   }
@@ -306,10 +376,13 @@ class ConnectionService {
     }
     return component
   }
-  clearAllConnections() {
+  /**
+   * Clear all connections
+   */
+  clearAllConnections(): void {
     const count = this.connections.length
     this.connections = []
-    log(602, { count: `Cleared ${count} connections` })
+    debug('Cleared all connections', { count })
   }
   getConnectionStats() {
     const totalItems = this.gameItems.length

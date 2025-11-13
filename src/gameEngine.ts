@@ -8,6 +8,7 @@ import { GAME_RULES, SEARCH_RULES, rulesConflict } from './rules/gameRules.ts'
 import { pinia } from '@store/pinia.ts'
 import { useFiltersStore } from '@store/filters.store.ts'
 import { useGameStateStore } from '@store/gameState.store.ts'
+import { debug, warn, error as logError } from './services/ui/log.ts'
 
 class GameEngine {
   constructor() {
@@ -28,8 +29,8 @@ class GameEngine {
     try {
       const gs = useGameStateStore()
       gs.reset()
-    } catch (error) {
-      console.warn('Failed to reset game state:', error)
+    } catch (err) {
+      warn('Failed to reset game state', { error: err })
     }
 
     // Get the base mode configuration
@@ -181,7 +182,7 @@ class GameEngine {
    */
   endGame() {
     if (this.currentGame) {
-      console.log(`🏁 Ending ${this.currentGame.mode.id} mode`)
+      debug('Ending game mode', { modeId: this.currentGame.mode.id })
       this.currentGame = null
       this.gameState = null
     }

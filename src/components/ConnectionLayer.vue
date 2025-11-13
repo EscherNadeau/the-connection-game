@@ -98,10 +98,19 @@ function getConnectionWidth(connection: Connection): number {
 }
 
 function getConnectionOpacity(connection: Connection): number {
+  const ids = props.highlightPathIds || []
+  const hasPathHighlight = Array.isArray(ids) && ids.length > 0
+  
   if (isOnPath(connection)) {
     return 1 // Full opacity for highlighted path
   }
-  return 0.4 // Lighter than before (was 0.6)
+  
+  // If we're showing a path, make non-path connections very dim
+  if (hasPathHighlight) {
+    return 0.15 // Very dim for non-path connections when path is shown
+  }
+  
+  return 0.4 // Normal opacity when no path is highlighted
 }
 
 function getConnectionDashArray(connection: Connection): string {

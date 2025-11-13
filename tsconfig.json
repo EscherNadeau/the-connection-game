@@ -8,12 +8,7 @@
       "exclude": [
         "src/**/__tests__/*",
         "src/**/*_backup.*",
-        "src/**/*_custom_builder_backup.*",
-        "src/components/CustomModeFlow.vue",
-        "src/components/WaitingRoom.vue",
-        "**/WaitingRoom.vue",
-        "src/views/WaitingRoom.vue",
-        "src/components/WaitingRoom.vue"
+        "src/**/*_custom_builder_backup.*"
       ],
   "compilerOptions": {
     "composite": true,
@@ -33,12 +28,12 @@
     "skipLibCheck": true,
     "allowJs": true,
     "checkJs": false,
-    "strict": false,
-    "noImplicitAny": false,
-    "noImplicitReturns": false,
-    "noFallthroughCasesInSwitch": false,
-    "noUncheckedIndexedAccess": false,
-    "noImplicitOverride": false,
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
     "allowUnusedLabels": true,
     "allowUnreachableCode": true,
     "allowImportingTsExtensions": false

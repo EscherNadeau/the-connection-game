@@ -172,7 +172,7 @@
 
 <script>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { log } from '../services/ui/log.ts'
+import { info, debug } from '../services/ui/log'
 
 export default {
   name: 'ModeSelectionScreen',
@@ -232,13 +232,13 @@ export default {
 
     // Go back to start screen
     const goBack = () => {
-      log('info', 'Back button clicked')
+      info('Back button clicked')
       emit('back-to-start')
     }
 
     // Select game mode
     const selectMode = (mode) => {
-      log('info', `Mode selected: ${mode.name}`)
+      info(`Mode selected: ${mode.name}`)
       // Capture play type from URL hash (set by PlayType)
       try {
         const hash = window.location.hash || ''
@@ -247,7 +247,9 @@ export default {
         if (playType) {
           mode = { ...mode, gameOptions: { ...(mode.gameOptions || {}), playType } }
         }
-      } catch (_) {}
+      } catch (err) {
+        debug('Failed to parse play type from hash', { error: err })
+      }
       
       if (props.showTutorial && props.tutorialStep === 7.6 && mode.id === 'goal') {
         // Tutorial step - click Goal Mode to continue
@@ -266,11 +268,11 @@ export default {
 
     // Lifecycle
     onMounted(() => {
-      log('info', 'ModeSelectionScreen mounted')
+      info('ModeSelectionScreen mounted')
     })
 
     onUnmounted(() => {
-      log('info', 'ModeSelectionScreen unmounted')
+      info('ModeSelectionScreen unmounted')
     })
 
     return {

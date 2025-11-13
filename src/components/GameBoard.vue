@@ -40,26 +40,17 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-// @ts-ignore
 import { RuleEnforcementService } from '@/services/game/RuleEnforcementService.ts'
-// @ts-ignore
 import connectionService from '@/services/game/ConnectionService.ts'
-// @ts-ignore
 import connectionEngine from '@/services/ConnectionEngineService.ts'
-// @ts-ignore
 import physicsService from '@/services/game/physicsService.ts'
-// @ts-ignore
 import notify from '@/services/ui/NotifyService.ts'
-// @ts-ignore
 import { normalizeMediaType, getGenderDisplayLabel, GENDERS } from '@/utils/constants.ts'
-// @ts-ignore
 import { useGameStateStore } from '@store/gameState.store.ts'
-// @ts-ignore
 import GameItem from './GameItem.vue'
-// @ts-ignore
 import ConnectionLayer from './ConnectionLayer.vue'
-// @ts-ignore
 import { shortestPathNodes } from '@/utils/graph.ts'
+import { debug, warn, error as logError } from '../services/ui/log.ts'
 import type { GameItem as GameItemType, Connection, GameBoardProps, GameBoardEmits } from '../types/game'
 
 const props = defineProps<GameBoardProps>()
@@ -359,11 +350,14 @@ async function addItem(item: GameItemType): Promise<void> {
       try {
         const areRelated = await connectionService.checkIfItemsAreRelated(item, existingItem)
         if (areRelated) {
-          console.log('🔗 Auto-connecting:', item.name, 'to', existingItem.name)
+          debug('Auto-connecting items', { 
+            from: item.name || item.title, 
+            to: existingItem.name || existingItem.title 
+          })
           createConnection(item, existingItem)
         }
-      } catch (error) {
-        console.log('Immediate connection check failed:', error)
+      } catch (err) {
+        warn('Immediate connection check failed', { error: err })
       }
     }
   }
@@ -418,7 +412,12 @@ function createConnection(from: GameItemType, to: GameItemType): void {
 }
 
 function checkGoalCompletion(): void {
-  console.log('🎯 checkGoalCompletion called, emitting check-goals with', connections.value.length, 'connections')
+  // Don't check goals in Zen/Free Play mode
+  if (props.gameMode?.id === 'zen') {
+    debug('Skipping goal check in Zen/Free Play mode')
+    return
+  }
+  debug('checkGoalCompletion called', { connectionCount: connections.value.length })
   emit('check-goals', connections.value)
 }
 
@@ -432,9 +431,9 @@ async function isValidConnection(item1: GameItemType, item2: GameItemType): Prom
     // Check if items are actually related
     const areRelated = await connectionService.checkIfItemsAreRelated(item1, item2)
     return areRelated
-  } catch (error) {
-    console.log('Connection validation failed:', error)
-        return false
+  } catch (err) {
+    warn('Connection validation failed', { error: err })
+    return false
   }
 }
 
@@ -477,9 +476,9 @@ async function autoConnectTick(): Promise<void> {
             if (areRelated) {
               createConnection(item1, item2)
             }
-          } catch (error) {
+          } catch (err) {
             // If relationship check fails, don't create connection
-            console.log('Relationship check failed:', error)
+            debug('Relationship check failed during auto-connect', { error: err })
           }
         }
       }
@@ -492,7 +491,10 @@ onMounted(() => {
   // Initialize ConnectionService with game options and items
   const gameOptions = props.gameOptions || {}
   connectionService.initialize(gameOptions, gameItems.value, connections.value)
-  console.log('🔗 ConnectionService initialized:', { gameOptions, itemCount: gameItems.value.length, connectionCount: connections.value.length })
+  debug('ConnectionService initialized', { 
+    itemCount: gameItems.value.length, 
+    connectionCount: connections.value.length 
+  })
   
   // Initialize starting items
   if (props.startingItems && props.startingItems.length > 0) {

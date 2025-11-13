@@ -45,7 +45,6 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-// @ts-ignore
 import { getGenderDisplayLabel } from '@/utils/constants.ts'
 import type { GameItem, GameItemProps, GameItemEmits } from '../types/game'
 
@@ -153,8 +152,9 @@ function handleImageError(event: Event): void {
 }
 
 .game-item.dimmed {
-  opacity: 0.35;
-  filter: grayscale(0.7) brightness(0.9);
+  opacity: 0.25;
+  filter: grayscale(0.9) brightness(0.7);
+  transition: opacity 0.3s ease, filter 0.3s ease;
 }
 
 .hint-btn {

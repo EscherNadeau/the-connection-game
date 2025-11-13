@@ -1,10 +1,7 @@
-// @ts-ignore
-import { useGameStateStore } from '@store/gameState.store.ts'
-// @ts-ignore
-import { log } from '@/services/ui/log.ts'
-// @ts-ignore
+import { useGameStateStore } from '@store/gameState.store'
+import { info, error as logError } from '@/services/ui/log'
 import config from '@/config/env'
-import type { PvPPlayer, GameOptions, GoalData } from '@/types/game'
+import type { PvPPlayer, GameOptions, GoalData, GameItem, Connection } from '@/types/game'
 
 export function usePvPGame() {
   const gs = useGameStateStore()
@@ -20,8 +17,8 @@ export function usePvPGame() {
    * Initialize PvP game with shared board data
    */
   function initializePvPGame(
-    gameBoard: any, 
-    gameData: { items?: any[], connections?: any[], gameOptions?: GameOptions }, 
+    gameBoard: { gameItems?: GameItem[]; connections?: Connection[] } | null, 
+    gameData: { items?: GameItem[]; connections?: Connection[]; gameOptions?: GameOptions }, 
     gameOptions: GameOptions
   ): GameOptions | undefined {
     if (!gameBoard) return undefined
@@ -33,10 +30,12 @@ export function usePvPGame() {
     // Update game options
     const updatedOptions: GameOptions = { ...gameOptions, ...gameData.gameOptions }
     
-    // Force update the game board
-    gameBoard.$forceUpdate()
+    // Force update the game board (if it has $forceUpdate method)
+    if (gameBoard && typeof (gameBoard as { $forceUpdate?: () => void }).$forceUpdate === 'function') {
+      (gameBoard as { $forceUpdate: () => void }).$forceUpdate()
+    }
     
-    log('info', '🎮 PvP game initialized with shared board data')
+    info( '🎮 PvP game initialized with shared board data')
     
     return updatedOptions
   }
@@ -55,7 +54,7 @@ export function usePvPGame() {
     subtitle: string
     stats: any
   } {
-    log('info', '🏆 PvP Results:', results)
+    info( '🏆 PvP Results:', results)
     
     // Sort results by score (highest first) or time (lowest first)
     const sortedResults = results.sort((a, b) => {
@@ -69,14 +68,14 @@ export function usePvPGame() {
     
     // Find current player's result
     const currentPlayerId = gs.collabClientId
-    log('info', '🏆 PvP Results Debug:', { currentPlayerId, results: results.map(r => ({ id: r.id || r.playerId, score: r.score })) })
+    info( '🏆 PvP Results Debug:', { currentPlayerId, results: results.map(r => ({ id: r.id || r.playerId, score: r.score })) })
     
     // If no client ID, try to get it from the room code or use a fallback
     let playerId = currentPlayerId
     if (!playerId && roomCode) {
       // Try to extract player ID from room or use room code as fallback
       playerId = roomCode
-      log('info', '🏆 PvP: Using room code as player ID fallback:', playerId)
+      info( '🏆 PvP: Using room code as player ID fallback:', playerId)
     }
     
     const currentPlayerResult = results.find(r => r.id === playerId || r.playerId === playerId)
@@ -84,7 +83,7 @@ export function usePvPGame() {
     if (currentPlayerResult) {
       // Determine if current player won (is first in sorted results)
       const isWinner = (sortedResults[0]?.id === playerId) || (sortedResults[0]?.playerId === playerId)
-      log('info', '🏆 PvP Player Result:', { isWinner, currentPlayerResult })
+      info( '🏆 PvP Player Result:', { isWinner, currentPlayerResult })
       
       // Return individual win/lose modal data
       return {
@@ -100,7 +99,7 @@ export function usePvPGame() {
         }
       }
     } else {
-      log('info', '🏆 PvP Player not found, showing fallback results')
+      info( '🏆 PvP Player not found, showing fallback results')
       // Fallback to shared results if player not found
       return {
         visible: true,
@@ -124,7 +123,7 @@ export function usePvPGame() {
       // Reconnect briefly to send completion data
       const roomCodeToUse = gameOptions?.roomCode || roomCode
       if (roomCodeToUse) {
-        log('info', '🏆 PvP: Reconnecting to send completion data')
+        info( '🏆 PvP: Reconnecting to send completion data')
         gs.connectCollab(config.wsUrl)
         
         // Wait a moment for connection, then send data
@@ -138,9 +137,9 @@ export function usePvPGame() {
               connections: goalData?.stats?.connections || 0
             }
             gs.sendCollab('action', completionData)
-            log('info', '🏆 PvP completion sent:', completionData)
+            info( '🏆 PvP completion sent:', completionData)
           } else {
-            log('error', '🏆 PvP: Failed to reconnect for completion')
+            logError( '🏆 PvP: Failed to reconnect for completion')
           }
         }, 1000)
       }
@@ -153,7 +152,7 @@ export function usePvPGame() {
         connections: goalData?.stats?.connections || 0
       }
       gs.sendCollab('action', completionData)
-      log('info', '🏆 PvP completion sent:', completionData)
+      info( '🏆 PvP completion sent:', completionData)
     }
   }
 

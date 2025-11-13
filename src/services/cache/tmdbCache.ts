@@ -1,6 +1,6 @@
 // tmdbCache.js - Specialized TMDB caching with full filmography and connection data
 
-import { log } from '../ui/log.ts'
+import { info, warn, error as logError } from '../ui/log.ts'
 import tmdbService from '../api/tmdbService.ts'
 import enhancedCacheService from './enhancedCacheService.ts'
 import { CACHE_CONFIG, CACHE_KEYS } from './cacheConfig.ts'
@@ -15,12 +15,12 @@ class TMDBCache {
       await enhancedCacheService.init()
       const tmdbStatus = tmdbService.getStatus()
       if (!tmdbStatus.hasApiKey) {
-        log('warn', 'TMDB API key not available - cache will work with existing data only')
+        warn( 'TMDB API key not available - cache will work with existing data only')
       }
       this.isInitialized = true
       await this.prePopulateCache()
     } catch (e) {
-      log('error', `Failed to initialize TMDB Cache: ${e.message}`)
+      logError( `Failed to initialize TMDB Cache: ${e.message}`)
     }
   }
   async getActorWithFilmographyCached(actorId) {
@@ -44,7 +44,7 @@ class TMDBCache {
   async prePopulateCache() {
     try {
     } catch (e) {
-      log('error', `Cache pre-population failed: ${e.message}`)
+      logError( `Cache pre-population failed: ${e.message}`)
     }
   }
   async cacheItemForGame(item, type) {
@@ -110,7 +110,7 @@ class TMDBCache {
         }
       }
     } catch (e) {
-      log('error', `Failed to cache game item: ${e.message}`)
+      logError( `Failed to cache game item: ${e.message}`)
       throw e
     }
   }
@@ -119,8 +119,7 @@ class TMDBCache {
     if (!popularActors || popularActors.length === 0) throw new Error('No popular actors available')
     const randomActor = popularActors[Math.floor(Math.random() * popularActors.length)]
     const fullActor = await this.getActorWithFilmography(randomActor.id, false)
-    log(
-      'info',
+    info(
       `Selected random actor: ${fullActor.name} with ${fullActor.filmography.length} credits (not cached yet)`
     )
     return fullActor
@@ -128,7 +127,7 @@ class TMDBCache {
   async getActorWithFilmography(actorId, shouldCache = true) {
     const cacheKey = CACHE_KEYS.ACTOR_FILMOGRAPHY(actorId)
     if (!shouldCache) {
-      log('info', `Fetching full filmography for actor ID: ${actorId} (not caching)`)
+      info( `Fetching full filmography for actor ID: ${actorId} (not caching)`)
       const filmography = await tmdbService.getActorFilmography(actorId)
       if (!filmography) throw new Error(`Failed to fetch filmography for actor ID: ${actorId}`)
       return {
@@ -142,7 +141,7 @@ class TMDBCache {
     const actorData = await enhancedCacheService.getOrSet(
       cacheKey,
       async () => {
-        log('info', `Fetching full filmography for actor ID: ${actorId}`)
+        info( `Fetching full filmography for actor ID: ${actorId}`)
         const filmography = await tmdbService.getActorFilmography(actorId)
         if (!filmography) throw new Error(`Failed to fetch filmography for actor ID: ${actorId}`)
         return {
@@ -166,7 +165,7 @@ class TMDBCache {
     const cached = await enhancedCacheService.getOrSet(
       cacheKey,
       async () => {
-        log('info', `Fetching popular actors page ${page}`)
+        info( `Fetching popular actors page ${page}`)
         const actors = await tmdbService.getPopularPeople(page)
         return actors.map((actor) => ({
           ...actor,
@@ -177,7 +176,7 @@ class TMDBCache {
       CACHE_CONFIG.CATEGORIES.POPULAR
     )
     if (!Array.isArray(cached) || cached.length === 0) {
-      log('info', `Popular actors cache empty; fetching fresh page ${page}`)
+      info( `Popular actors cache empty; fetching fresh page ${page}`)
       const actors = await tmdbService.getPopularPeople(page)
       const enhanced = (actors || []).map((actor) => ({
         ...actor,
@@ -195,8 +194,7 @@ class TMDBCache {
     if (!popularMovies || popularMovies.length === 0) throw new Error('No popular movies available')
     const randomMovie = popularMovies[Math.floor(Math.random() * popularMovies.length)]
     const fullMovie = await this.getMovieWithCast(randomMovie.id, false)
-    log(
-      'info',
+    info(
       `Selected random movie: ${fullMovie.title} with ${fullMovie.cast.length} cast members (not cached yet)`
     )
     return fullMovie
@@ -204,7 +202,7 @@ class TMDBCache {
   async getMovieWithCast(movieId, shouldCache = true) {
     const cacheKey = CACHE_KEYS.MOVIE(movieId)
     if (!shouldCache) {
-      log('info', `Fetching full cast for movie ID: ${movieId} (not caching)`)
+      info( `Fetching full cast for movie ID: ${movieId} (not caching)`)
       const credits = await tmdbService.getMovieCredits(movieId)
       if (!credits) throw new Error(`Failed to fetch credits for movie ID: ${movieId}`)
       const movieInfo = await this.getMovieInfo(movieId, false)
@@ -219,7 +217,7 @@ class TMDBCache {
     const movieData = await enhancedCacheService.getOrSet(
       cacheKey,
       async () => {
-        log('info', `Fetching full cast for movie ID: ${movieId}`)
+        info( `Fetching full cast for movie ID: ${movieId}`)
         const credits = await tmdbService.getMovieCredits(movieId)
         if (!credits) throw new Error(`Failed to fetch credits for movie ID: ${movieId}`)
         const movieInfo = await this.getMovieInfo(movieId, false)
@@ -241,7 +239,7 @@ class TMDBCache {
   async getMovieInfo(movieId, shouldCache = true) {
     const cacheKey = CACHE_KEYS.MOVIE(movieId)
     if (!shouldCache) {
-      log('info', `Fetching movie info for ID: ${movieId} (not caching)`)
+      info( `Fetching movie info for ID: ${movieId} (not caching)`)
       const movieDetails = await tmdbService.getMovieDetails(movieId)
       if (!movieDetails) throw new Error(`Failed to fetch movie details for ID: ${movieId}`)
       return { ...movieDetails, media_type: 'movie', last_updated: new Date().toISOString() }
@@ -249,7 +247,7 @@ class TMDBCache {
     const movieInfoData = await enhancedCacheService.getOrSet(
       cacheKey,
       async () => {
-        log('info', `Fetching movie info for ID: ${movieId}`)
+        info( `Fetching movie info for ID: ${movieId}`)
         const movieDetails = await tmdbService.getMovieDetails(movieId)
         if (!movieDetails) throw new Error(`Failed to fetch movie details for ID: ${movieId}`)
         return { ...movieDetails, media_type: 'movie', last_updated: new Date().toISOString() }
@@ -271,7 +269,7 @@ class TMDBCache {
     const cached = await enhancedCacheService.getOrSet(
       cacheKey,
       async () => {
-        log('info', `Fetching popular movies page ${page}`)
+        info( `Fetching popular movies page ${page}`)
         const movies = await tmdbService.getPopularMovies(page)
         return movies.map((m) => ({
           ...m,
@@ -282,7 +280,7 @@ class TMDBCache {
       CACHE_CONFIG.CATEGORIES.POPULAR
     )
     if (!Array.isArray(cached) || cached.length === 0) {
-      log('info', `Popular movies cache empty; fetching fresh page ${page}`)
+      info( `Popular movies cache empty; fetching fresh page ${page}`)
       const movies = await tmdbService.getPopularMovies(page)
       const enhanced = (movies || []).map((m) => ({
         ...m,
@@ -301,15 +299,14 @@ class TMDBCache {
       throw new Error('No popular TV shows available')
     const randomTVShow = popularTVShows[Math.floor(Math.random() * popularTVShows.length)]
     const fullTVShow = await this.getTVShowWithCast(randomTVShow.id, false)
-    log(
-      'info',
+    info(
       `Selected random TV show: ${fullTVShow.name} with ${fullTVShow.cast.length} cast members (not cached yet)`
     )
     return fullTVShow
   }
   async getRandomItem(type) {
     try {
-      log('info', `Getting random ${type} item`)
+      info( `Getting random ${type} item`)
       switch (type) {
         case 'person':
         case 'actor':
@@ -323,7 +320,7 @@ class TMDBCache {
           throw new Error(`Unknown type: ${type}`)
       }
     } catch (error) {
-      log('error', `Failed to get random ${type} item: ${error.message}`)
+      logError( `Failed to get random ${type} item: ${error.message}`)
       return null
     }
   }
@@ -365,7 +362,7 @@ class TMDBCache {
   async getTVShowInfo(tvId, shouldCache = true) {
     const cacheKey = CACHE_KEYS.TV_SHOW(tvId)
     if (!shouldCache) {
-      log('info', `Fetching TV show info for ID: ${tvId} (not caching)`)
+      info( `Fetching TV show info for ID: ${tvId} (not caching)`)
       const tvDetails = await tmdbService.getTVShowDetails(tvId)
       if (!tvDetails) throw new Error(`Failed to fetch TV show details for ID: ${tvId}`)
       return { ...tvDetails, media_type: 'tv', last_updated: new Date().toISOString() }
@@ -373,7 +370,7 @@ class TMDBCache {
     const tvInfoData = await enhancedCacheService.getOrSet(
       cacheKey,
       async () => {
-        log('info', `Fetching TV show info for ID: ${tvId}`)
+        info( `Fetching TV show info for ID: ${tvId}`)
         const tvDetails = await tmdbService.getTVShowDetails(tvId)
         if (!tvDetails) throw new Error(`Failed to fetch TV show details for ID: ${tvId}`)
         return { ...tvDetails, media_type: 'tv', last_updated: new Date().toISOString() }
@@ -395,7 +392,7 @@ class TMDBCache {
     const cached = await enhancedCacheService.getOrSet(
       cacheKey,
       async () => {
-        log('info', `Fetching popular TV shows page ${page}`)
+        info( `Fetching popular TV shows page ${page}`)
         const tvShows = await tmdbService.getPopularTVShows(page)
         return tvShows.map((tv) => ({
           ...tv,
@@ -406,7 +403,7 @@ class TMDBCache {
       CACHE_CONFIG.CATEGORIES.POPULAR
     )
     if (!Array.isArray(cached) || cached.length === 0) {
-      log('info', `Popular TV shows cache empty; fetching fresh page ${page}`)
+      info( `Popular TV shows cache empty; fetching fresh page ${page}`)
       const tvShows = await tmdbService.getPopularTVShows(page)
       const enhanced = (tvShows || []).map((tv) => ({
         ...tv,
@@ -424,7 +421,7 @@ class TMDBCache {
     return await enhancedCacheService.getOrSet(
       cacheKey,
       async () => {
-        log('info', `Searching for: ${query} (type: ${type})`)
+        info( `Searching for: ${query} (type: ${type})`)
         const results = await tmdbService.searchMulti(query)
         return results.map((item) => ({ ...item, last_updated: new Date().toISOString() }))
       },
@@ -437,8 +434,7 @@ class TMDBCache {
       return await enhancedCacheService.getOrSet(
         connectionKey,
         async () => {
-          log(
-            'info',
+          info(
             `Finding connections between ${item1.name || item1.title} and ${item2.name || item2.title}`
           )
           const connections = []
@@ -468,7 +464,7 @@ class TMDBCache {
         CACHE_CONFIG.EXPIRATION.CONNECTIONS
       )
     } catch (e) {
-      log('error', `Failed to find connections: ${e.message}`)
+      logError( `Failed to find connections: ${e.message}`)
       return []
     }
   }
@@ -486,7 +482,7 @@ class TMDBCache {
         strength: 'direct',
       }))
     } catch (e) {
-      log('error', `Failed to find shared movies: ${e.message}`)
+      logError( `Failed to find shared movies: ${e.message}`)
       return []
     }
   }
@@ -495,69 +491,69 @@ class TMDBCache {
       const movieWithCast = await this.getMovieWithCast(movie.id)
       return movieWithCast.cast.some((c) => c.id === actor.id)
     } catch (e) {
-      log('error', `Failed to check actor in movie: ${e.message}`)
+      logError( `Failed to check actor in movie: ${e.message}`)
       return false
     }
   }
   async fetchAndCachePopularActors(pages = 1) {
     try {
-      log('info', `Fetching and caching ${pages} pages of popular actors`)
+      info( `Fetching and caching ${pages} pages of popular actors`)
       for (let p = 1; p <= pages; p++) await this.getPopularActors(p)
-      log('info', `Successfully cached ${pages} pages of popular actors`)
+      info( `Successfully cached ${pages} pages of popular actors`)
     } catch (e) {
-      log('error', `Failed to fetch and cache popular actors: ${e.message}`)
+      logError( `Failed to fetch and cache popular actors: ${e.message}`)
     }
   }
   async fetchAndCachePopularMovies(pages = 1) {
     try {
-      log('info', `Fetching and caching ${pages} pages of popular movies`)
+      info( `Fetching and caching ${pages} pages of popular movies`)
       for (let p = 1; p <= pages; p++) await this.getPopularMovies(p)
-      log('info', `Successfully cached ${pages} pages of popular movies`)
+      info( `Successfully cached ${pages} pages of popular movies`)
     } catch (e) {
-      log('error', `Failed to fetch and cache popular movies: ${e.message}`)
+      logError( `Failed to fetch and cache popular movies: ${e.message}`)
     }
   }
   async fetchAndCachePopularTVShows(pages = 1) {
     try {
-      log('info', `Fetching and caching ${pages} pages of popular TV shows`)
+      info( `Fetching and caching ${pages} pages of popular TV shows`)
       for (let p = 1; p <= pages; p++) await this.getPopularTVShows(p)
-      log('info', `Successfully cached ${pages} pages of popular TV shows`)
+      info( `Successfully cached ${pages} pages of popular TV shows`)
     } catch (e) {
-      log('error', `Failed to fetch and cache popular TV shows: ${e.message}`)
+      logError( `Failed to fetch and cache popular TV shows: ${e.message}`)
     }
   }
   async getCacheStats() {
     try {
       const stats = await enhancedCacheService.getStats()
-      log('info', 'Cache statistics retrieved', stats)
+      info( 'Cache statistics retrieved', stats)
       return stats
     } catch (e) {
-      log('error', `Failed to get cache stats: ${e.message}`)
+      logError( `Failed to get cache stats: ${e.message}`)
       return { error: e.message }
     }
   }
   async clearCache(category = null) {
     try {
       await enhancedCacheService.clear(category)
-      log('info', `Cache cleared${category ? ` for ${category}` : ''}`)
+      info( `Cache cleared${category ? ` for ${category}` : ''}`)
       return true
     } catch (e) {
-      log('error', `Failed to clear cache: ${e.message}`)
+      logError( `Failed to clear cache: ${e.message}`)
       return false
     }
   }
   async refreshCache(items = []) {
     try {
-      log('info', `Refreshing cache for ${items.length} items`)
+      info( `Refreshing cache for ${items.length} items`)
       for (const item of items) {
         if (item.media_type === 'person') await this.getActorWithFilmography(item.id)
         else if (item.media_type === 'movie') await this.getMovieWithCast(item.id)
         else if (item.media_type === 'tv') await this.getTVShowWithCast(item.id)
       }
-      log('info', 'Cache refresh completed')
+      info( 'Cache refresh completed')
       return true
     } catch (e) {
-      log('error', `Failed to refresh cache: ${e.message}`)
+      logError( `Failed to refresh cache: ${e.message}`)
       return false
     }
   }
@@ -573,6 +569,6 @@ class TMDBCache {
 const tmdbCache = new TMDBCache()
 if (typeof window !== 'undefined' && import.meta.env && import.meta.env.DEV) {
   window.tmdbCache = tmdbCache
-  log('info', 'TMDB Cache exposed globally as window.tmdbCache')
+  info('TMDB Cache exposed globally as window.tmdbCache')
 }
 export default tmdbCache

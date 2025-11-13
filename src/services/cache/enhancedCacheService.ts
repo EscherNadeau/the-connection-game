@@ -1,6 +1,6 @@
 // enhancedCacheService.js - Advanced IndexedDB-based cache system with localStorage fallback
 
-import { log } from '../ui/log.ts'
+import { info, warn, error as logError } from '../ui/log.ts'
 import { CACHE_CONFIG, CACHE_KEYS, DATA_STRUCTURES, ERROR_MESSAGES } from './cacheConfig.ts'
 
 class EnhancedCacheService {
@@ -20,12 +20,12 @@ class EnhancedCacheService {
         await this.ensureSchemaVersion()
       } else {
         this.fallbackToLocalStorage = true
-        log('warn', 'IndexedDB not supported, falling back to localStorage')
+        warn( 'IndexedDB not supported, falling back to localStorage')
       }
     } catch (error) {
-      log('error', `Failed to initialize IndexedDB: ${error.message}`)
+      logError( `Failed to initialize IndexedDB: ${error.message}`)
       this.fallbackToLocalStorage = true
-      log('info', 'Falling back to localStorage')
+      info( 'Falling back to localStorage')
     }
   }
   async ensureSchemaVersion() {
@@ -37,10 +37,10 @@ class EnhancedCacheService {
         await this.clear(CACHE_CONFIG.STORES.MOVIES)
         await this.clear(CACHE_CONFIG.STORES.TV_SHOWS)
         await this.set(CACHE_KEYS.STORAGE_INFO, current, CACHE_CONFIG.STORES.METADATA, 0)
-        log('info', `Cache schema updated to v${current.schemaVersion}. Primary caches cleared.`)
+        info( `Cache schema updated to v${current.schemaVersion}. Primary caches cleared.`)
       }
     } catch (error) {
-      log('error', `Failed to ensure schema version: ${error.message}`)
+      logError( `Failed to ensure schema version: ${error.message}`)
     }
   }
   async initIndexedDB() {
@@ -50,12 +50,12 @@ class EnhancedCacheService {
         CACHE_CONFIG.STORAGE.VERSION
       )
       request.onerror = () => {
-        log('error', 'Failed to open IndexedDB')
+        logError( 'Failed to open IndexedDB')
         reject(new Error('Failed to open IndexedDB'))
       }
       request.onsuccess = (e) => {
         this.db = e.target.result
-        log('info', 'IndexedDB opened successfully')
+        info( 'IndexedDB opened successfully')
         resolve()
       }
       request.onupgradeneeded = (e) => {
@@ -68,7 +68,7 @@ class EnhancedCacheService {
             store.createIndex('category', 'category', { unique: false })
           }
         })
-        log('info', 'IndexedDB stores created/upgraded')
+        info( 'IndexedDB stores created/upgraded')
       }
     })
   }
@@ -86,10 +86,10 @@ class EnhancedCacheService {
       } else {
         this.setLocalStorage(key, cacheItem)
       }
-      log('info', `Cached item: ${key} in category ${category}`)
+      info( `Cached item: ${key} in category ${category}`)
       return true
     } catch (error) {
-      log('error', `Failed to cache item ${key}: ${error.message}`)
+      logError( `Failed to cache item ${key}: ${error.message}`)
       return false
     }
   }
@@ -105,7 +105,7 @@ class EnhancedCacheService {
       }
       return cacheItem.data
     } catch (error) {
-      log('error', `Failed to get cached item ${key}: ${error.message}`)
+      logError( `Failed to get cached item ${key}: ${error.message}`)
       return null
     }
   }
@@ -124,10 +124,10 @@ class EnhancedCacheService {
     try {
       if (this.isIndexedDBSupported && this.db) await this.deleteIndexedDB(key, category)
       else this.deleteLocalStorage(key)
-      log('info', `Deleted cached item: ${key}`)
+      info( `Deleted cached item: ${key}`)
       return true
     } catch (error) {
-      log('error', `Failed to delete cached item ${key}: ${error.message}`)
+      logError( `Failed to delete cached item ${key}: ${error.message}`)
       return false
     }
   }
@@ -135,10 +135,10 @@ class EnhancedCacheService {
     try {
       if (this.isIndexedDBSupported && this.db) await this.clearIndexedDB(category)
       else this.clearLocalStorage(category)
-      log('info', `Cleared cache${category ? ` for ${category}` : ''}`)
+      info( `Cleared cache${category ? ` for ${category}` : ''}`)
       return true
     } catch (error) {
-      log('error', `Failed to clear cache: ${error.message}`)
+      logError( `Failed to clear cache: ${error.message}`)
       return false
     }
   }
@@ -147,7 +147,7 @@ class EnhancedCacheService {
       if (this.isIndexedDBSupported && this.db) return await this.getStatsIndexedDB()
       else return this.getStatsLocalStorage()
     } catch (error) {
-      log('error', `Failed to get cache stats: ${error.message}`)
+      logError( `Failed to get cache stats: ${error.message}`)
       return { error: error.message }
     }
   }
@@ -156,7 +156,7 @@ class EnhancedCacheService {
       if (this.isIndexedDBSupported && this.db) await this.cleanupIndexedDB()
       else this.cleanupLocalStorage()
     } catch (error) {
-      log('error', `Failed to cleanup cache: ${error.message}`)
+      logError( `Failed to cleanup cache: ${error.message}`)
     }
   }
   async setIndexedDB(key, cacheItem, category) {
@@ -234,7 +234,7 @@ class EnhancedCacheService {
         CACHE_CONFIG.LIMITS.MAX_ARCHIVE_TV_SHOWS
       )
     } catch (e) {
-      log('error', `Failed to enforce archive limits: ${e.message}`)
+      logError( `Failed to enforce archive limits: ${e.message}`)
     }
   }
   async enforceLimit(storeName, maxItems) {
@@ -278,10 +278,10 @@ class EnhancedCacheService {
         const cleaned = await this.cleanupStore(s)
         totalCleaned += cleaned
       } catch (e) {
-        log('error', `Failed to cleanup store ${s}: ${e.message}`)
+        logError( `Failed to cleanup store ${s}: ${e.message}`)
       }
     }
-    if (totalCleaned > 0) log('info', `Cleaned up ${totalCleaned} expired items from IndexedDB`)
+    if (totalCleaned > 0) info( `Cleaned up ${totalCleaned} expired items from IndexedDB`)
   }
   async cleanupStore(storeName) {
     return new Promise((resolve, reject) => {
@@ -350,7 +350,7 @@ class EnhancedCacheService {
         })
       }
     } catch (e) {
-      log('error', `Failed to clear localStorage: ${e.message}`)
+      logError( `Failed to clear localStorage: ${e.message}`)
     }
   }
   getStatsLocalStorage() {
@@ -385,7 +385,7 @@ class EnhancedCacheService {
         }
       }
     })
-    if (cleaned > 0) log('info', `Cleaned up ${cleaned} expired items from localStorage`)
+    if (cleaned > 0) info( `Cleaned up ${cleaned} expired items from localStorage`)
   }
   isExpired(ci) {
     if (!ci.expiration) return false
@@ -412,7 +412,7 @@ class EnhancedCacheService {
     }
   }
   handleStorageQuotaExceeded() {
-    log('warn', ERROR_MESSAGES.STORAGE_QUOTA_EXCEEDED)
+    warn( ERROR_MESSAGES.STORAGE_QUOTA_EXCEEDED)
     this.removeOldestItems()
   }
   removeOldestItems() {
@@ -423,7 +423,7 @@ class EnhancedCacheService {
         this.removeOldestItemsLocalStorage()
       }
     } catch (e) {
-      log('error', `Failed to remove oldest items: ${e.message}`)
+      logError( `Failed to remove oldest items: ${e.message}`)
     }
   }
   async removeOldestItemsIndexedDB() {
@@ -442,7 +442,7 @@ class EnhancedCacheService {
           }
         }
       } catch (e) {
-        log('error', `Failed to remove oldest items from ${s}: ${e.message}`)
+        logError( `Failed to remove oldest items from ${s}: ${e.message}`)
       }
     }
   }
@@ -471,7 +471,7 @@ class EnhancedCacheService {
       await this.set(key, data, category, expiration)
       return data
     } catch (e) {
-      log('error', `API call failed for ${key}: ${e.message}`)
+      logError( `API call failed for ${key}: ${e.message}`)
       throw e
     }
   }
@@ -483,7 +483,7 @@ class EnhancedCacheService {
       else missing.push(k)
     }
     if (missing.length > 0) {
-      log('info', `Batch API call for ${missing.length} missing items`)
+      info( `Batch API call for ${missing.length} missing items`)
       try {
         const apiResults = await apiCallFn(missing)
         for (const k of missing) {
@@ -493,7 +493,7 @@ class EnhancedCacheService {
           }
         }
       } catch (e) {
-        log('error', `Batch API call failed: ${e.message}`)
+        logError( `Batch API call failed: ${e.message}`)
         throw e
       }
     }
@@ -510,6 +510,6 @@ setInterval(
 )
 if (typeof window !== 'undefined' && import.meta.env && import.meta.env.DEV) {
   window.enhancedCacheService = enhancedCacheService
-  log('info', 'Enhanced Cache Service exposed globally as window.enhancedCacheService')
+  info('Enhanced Cache Service exposed globally as window.enhancedCacheService')
 }
 export default enhancedCacheService

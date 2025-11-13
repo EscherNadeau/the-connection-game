@@ -1,6 +1,7 @@
 // Pure service: no UI/log side effects
 
 import { normalizeMediaType, isPersonType, isMediaType } from '@utils/constants.ts'
+import { debug } from '../services/ui/log.ts'
 
 class KnowledgeModeService {
   constructor() {
@@ -38,7 +39,10 @@ class KnowledgeModeService {
         try {
           const areRelated = await this.checkIfItemsAreRelated(newItem, existingItem)
           if (areRelated) return true
-        } catch (error) {}
+        } catch (err) {
+          // Relationship check failed - continue checking other items
+          debug('Failed to check if items are related in KnowledgeMode', { error: err })
+        }
       }
     }
     return false

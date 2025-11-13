@@ -226,14 +226,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-// @ts-ignore
 import { useGameStateStore } from '@store/gameState.store.ts'
-// @ts-ignore
 import { multiplayerService } from '../services/MultiplayerService'
-// @ts-ignore
 import SearchService from '../services/game/SearchService.ts'
-// @ts-ignore
 import config from '@/config/env'
+import { debug, warn, error as logError } from '../services/ui/log.ts'
 import type { PhoneWaitingRoomProps, PhoneWaitingRoomEmits } from '../types/game'
 
 const props = defineProps<PhoneWaitingRoomProps>()
@@ -349,7 +346,7 @@ const updateColorFromHSL = () => {
 const applyCustomColor = () => {
   updateColorFromHSL()
   showColorPicker.value = false
-  console.log('🎨 Custom color applied:', selectedColor.value)
+  debug('Custom color applied', { color: selectedColor.value })
 }
 
 const onAnswerInput = async () => {
@@ -378,8 +375,8 @@ const onAnswerInput = async () => {
       } else {
         searchResults.value = []
       }
-    } catch (error) {
-      console.error('🔍 PhoneWaitingRoom: Search error:', error)
+    } catch (err) {
+      logError('PhoneWaitingRoom: Search error', { error: err })
       searchResults.value = []
     }
   }, 300) // 300ms debounce
@@ -420,9 +417,9 @@ const submitAnswer = async () => {
       answerData.mediaType = tmdbResult.media_type
       answerData.title = tmdbResult.title || tmdbResult.name || answerText
       
-      console.log('🔍 PhoneWaitingRoom: Found TMDB result:', tmdbResult)
+      debug('PhoneWaitingRoom: Found TMDB result', { tmdbId: tmdbResult.id, title: tmdbResult.title || tmdbResult.name })
     } else {
-      console.log('🔍 PhoneWaitingRoom: No TMDB result found, using fallback')
+      debug('PhoneWaitingRoom: No TMDB result found, using fallback')
       // Add a fallback image for testing
       answerData.image = 'https://image.tmdb.org/t/p/w500/placeholder.jpg'
     }
@@ -446,18 +443,20 @@ const submitAnswer = async () => {
     if (existingPlayerIndex !== -1) {
       // Replace existing poster instead of adding new one
       answerPosters.value[existingPlayerIndex] = posterData
-      console.log('🔄 Updated existing player poster:', posterData)
+      debug('Updated existing player poster', { playerName: posterData.playerName })
     } else {
       // Add new player poster
       answerPosters.value.push(posterData)
-      console.log('✅ Added new player poster:', posterData)
+      debug('Added new player poster', { playerName: posterData.playerName })
     }
     
-    console.log('🔍 PhoneWaitingRoom: Image URL:', posterData.image)
-    
-    console.log('🔍 PhoneWaitingRoom: Submitted answer with TMDB data:', answerData)
-  } catch (error) {
-    console.error('🔍 PhoneWaitingRoom: Search error:', error)
+    debug('PhoneWaitingRoom: Submitted answer', { 
+      title: answerData.title, 
+      playerName: answerData.playerName,
+      hasImage: !!posterData.image 
+    })
+  } catch (err) {
+    logError('PhoneWaitingRoom: Search error', { error: err, answerText })
     
     // Fallback: send answer without TMDB data
     gameStateStore.sendCollab('action', {
@@ -484,20 +483,20 @@ const submitAnswer = async () => {
     if (existingPlayerIndex !== -1) {
       // Replace existing poster instead of adding new one
       answerPosters.value[existingPlayerIndex] = fallbackPosterData
-      console.log('🔄 Updated existing player poster (fallback):', fallbackPosterData)
+      debug('Updated existing player poster (fallback)', { playerName: fallbackPosterData.playerName })
     } else {
       // Add new player poster
       answerPosters.value.push(fallbackPosterData)
-      console.log('✅ Added new player poster (fallback):', fallbackPosterData)
+      debug('Added new player poster (fallback)', { playerName: fallbackPosterData.playerName })
     }
   }
 }
 
 const finishProfile = () => {
-  console.log('📱 finishProfile called, canContinue:', canContinue.value)
+  debug('finishProfile called', { canContinue: canContinue.value })
   
   if (!canContinue.value) {
-    console.log('❌ Cannot continue - missing required fields')
+    warn('Cannot continue - missing required fields')
     return
   }
   
@@ -508,13 +507,13 @@ const finishProfile = () => {
     answer: playerAnswer.value.trim()
   }
   
-  console.log('📤 Sending profile to server:', profileData)
+  debug('Sending profile to server', { profileData })
   
   // Send profile to server
   gameStateStore.sendCollab('action', profileData)
   
   profileReady.value = true
-  console.log('✅ Profile completed, profileReady:', profileReady.value)
+  debug('Profile completed', { profileReady: profileReady.value })
 }
 
 const toggleReady = () => {
@@ -527,7 +526,7 @@ const toggleReady = () => {
     playerName: playerName.value.trim()
   })
   
-  console.log('🎮 PhoneWaitingRoom: Ready status:', isReady.value)
+  debug('PhoneWaitingRoom: Ready status', { isReady: isReady.value })
 }
 
 const startGame = () => {
@@ -539,7 +538,7 @@ const startGame = () => {
     isPvP: props.gameOptions?.playType === 'couch-pvp'
   })
   
-  console.log('🎮 PhoneWaitingRoom: Host starting game')
+  debug('PhoneWaitingRoom: Host starting game')
 }
 
 // Removed addTestPoster function as it was unused
@@ -576,7 +575,7 @@ onMounted(() => {
         
         // Handle game started
         if (action.kind === 'game_started') {
-          console.log('🎮 PhoneWaitingRoom: Game started event received, transitioning to controller')
+          debug('PhoneWaitingRoom: Game started event received, transitioning to controller')
           // Transition to controller view
           gameStateStore.setCurrentView('controller')
         }
@@ -594,7 +593,7 @@ onMounted(() => {
         if (roster.players) {
           readyCount.value = roster.players.filter((p: any) => p.ready === true).length
           playerCount.value = roster.players.length
-          console.log('📋 PhoneWaitingRoom: Ready count:', readyCount.value, '/', playerCount.value)
+          debug('PhoneWaitingRoom: Ready count', { ready: readyCount.value, total: playerCount.value })
         }
       }
     })
@@ -603,7 +602,7 @@ onMounted(() => {
     if (config.wsUrl) {
       gameStateStore.connectCollab(config.wsUrl)
     } else {
-      console.log('📱 PhoneWaitingRoom: No WebSocket server configured (solo mode)')
+      debug('PhoneWaitingRoom: No WebSocket server configured (solo mode)')
     }
     
     // Set connection status

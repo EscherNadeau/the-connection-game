@@ -16,23 +16,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, onBeforeUnmount } from 'vue'
-// @ts-ignore
 import SearchPanel from './SearchPanel.vue'
-// @ts-ignore
 import SearchService from '@/services/game/SearchService.ts'
-// @ts-ignore
 import HintService from '@/services/game/HintService.ts'
-// @ts-ignore
 import { normalizeMediaType, matchesGenderFilter, GENDERS } from '@/utils/constants.ts'
-// @ts-ignore
 import { useFiltersStore } from '@store/filters.store.ts'
-// @ts-ignore
 import { useGameStateStore } from '@store/gameState.store.ts'
-// @ts-ignore
-import { log } from '@/services/ui/log.ts'
-// @ts-ignore
+import { debug, info, error as logError } from '@/services/ui/log.ts'
 import tmdbCache from '@/services/cache/tmdbCache.ts'
-// @ts-ignore
 import notify from '@/services/ui/NotifyService.ts'
 import type { GameSearchPanelProps, GameSearchPanelEmits, SearchResult, GameItem } from '../types/game'
 
@@ -73,7 +64,7 @@ async function performSearch(): Promise<void> {
     searchResults.value = []
     return
   }
-  log('info', '🔍 Starting search in GameScreen:', searchQuery.value)
+  info( '🔍 Starting search in GameScreen:', searchQuery.value)
   isSearching.value = true
   try {
     const filtersStore = useFiltersStore()
@@ -105,13 +96,13 @@ async function performSearch(): Promise<void> {
         })
       }
       searchResults.value = results.slice(0, 8)
-      log('info', `✅ Search completed: ${searchResults.value.length} results`)
+      info( `✅ Search completed: ${searchResults.value.length} results`)
     } else {
-      log('error', '❌ Search failed:', searchResult.error)
+      logError( '❌ Search failed:', searchResult.error)
       searchResults.value = []
     }
   } catch (error: any) {
-    log('error', '❌ Search error:', error.message)
+    logError('❌ Search error:', error.message)
     searchResults.value = []
   } finally {
     isSearching.value = false
@@ -122,10 +113,7 @@ function selectSearchResult(result: SearchResult): void {
   const genderLabel = (g: number) => (g === 1 ? 'female' : g === 2 ? 'male' : 'unknown')
   const name = result.title || result.name
   const g = result?.originalData?.gender
-  log(
-    'info',
-    `🎯 Selected: ${name} (${result.type}${result.type === 'person' ? `, ${genderLabel(g || 0)}` : ''})`
-  )
+  info(`🎯 Selected: ${name} (${result.type}${result.type === 'person' ? `, ${genderLabel(g || 0)}` : ''})`)
   const filtersStore = useFiltersStore()
   const rawCastFilter =
     props.gameOptions?.castFilter ||
@@ -224,7 +212,7 @@ async function onHintRequested(item: GameItem): Promise<void> {
     item?.tmdbData?.title ||
     item?.tmdbData?.name ||
     'Item'
-  console.log(`🔎 Generating hints for: ${label} (castFilter=${castFilter})`)
+  debug('Generating hints for item', { label, castFilter })
   const results = await HintService.getSuggestionsForItem(item, castFilter)
   if (!results || results.length === 0) {
     notify.info('No hints available for this item')
@@ -232,7 +220,7 @@ async function onHintRequested(item: GameItem): Promise<void> {
   }
   searchQuery.value = ''
   searchResults.value = results
-  console.log(`💡 Hints ready: ${results.length} suggestion(s)`)
+  debug('Hints ready', { count: results.length })
 }
 
 // Cleanup

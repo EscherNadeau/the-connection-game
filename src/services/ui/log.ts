@@ -1,25 +1,31 @@
-// log.js - Simple, clean logging service
-// Usage: import { log } from './log.ts' then call log('message', data)
+/**
+ * Simple, clean logging service
+ * Usage: import { log } from './log.ts' then call log('message', data)
+ */
 
 // Log levels
-const LOG_LEVELS = {
+export const LOG_LEVELS = {
   DEBUG: 0,
   INFO: 1,
   WARN: 2,
   ERROR: 3,
-}
+} as const
+
+export type LogLevel = typeof LOG_LEVELS[keyof typeof LOG_LEVELS]
 
 // Current log level (change this to control what gets logged)
-let currentLogLevel = LOG_LEVELS.WARN
+let currentLogLevel: LogLevel = LOG_LEVELS.WARN
 
 /**
  * Main logging function
- * @param {string|number} level - Log level or message
- * @param {any} data - Data to log
+ * @param level - Log level or message string
+ * @param data - Optional data to log
  */
-export function log(level, data = null) {
+export function log(level: string | LogLevel, data: unknown = null): void {
   // Handle different call patterns
-  let message, logData, logLevel
+  let message: string
+  let logData: unknown
+  let logLevel: LogLevel
 
   if (typeof level === 'string') {
     // log('message', data)
@@ -28,9 +34,9 @@ export function log(level, data = null) {
     logLevel = LOG_LEVELS.INFO
   } else if (typeof level === 'number') {
     // log(100, { message: 'text', data: value })
-    logLevel = level
-    if (data && typeof data === 'object' && data.message) {
-      message = data.message
+    logLevel = level as LogLevel
+    if (data && typeof data === 'object' && data !== null && 'message' in data) {
+      message = String((data as { message: unknown }).message)
       logData = data
     } else {
       message = `Log code: ${level}`
@@ -72,9 +78,9 @@ export function log(level, data = null) {
 
 /**
  * Set log level
- * @param {number} level - New log level
+ * @param level - New log level
  */
-export function setLogLevel(level) {
+export function setLogLevel(level: LogLevel): void {
   if (Object.values(LOG_LEVELS).includes(level)) {
     currentLogLevel = level
     log(`Log level set to ${level}`)
@@ -85,59 +91,59 @@ export function setLogLevel(level) {
 
 /**
  * Get current log level
- * @returns {number} Current log level
+ * @returns Current log level
  */
-export function getLogLevel() {
+export function getLogLevel(): LogLevel {
   return currentLogLevel
 }
 
 /**
  * Disable all logging
  */
-export function disableLogging() {
-  currentLogLevel = LOG_LEVELS.ERROR + 1
+export function disableLogging(): void {
+  currentLogLevel = (LOG_LEVELS.ERROR + 1) as LogLevel
 }
 
 /**
  * Enable all logging
  */
-export function enableAllLogging() {
+export function enableAllLogging(): void {
   currentLogLevel = LOG_LEVELS.DEBUG
 }
 
 /**
  * Quick debug logging
- * @param {string} message - Debug message
- * @param {any} data - Debug data
+ * @param message - Debug message
+ * @param data - Optional debug data
  */
-export function debug(message, data = null) {
+export function debug(message: string, data: unknown = null): void {
   log(LOG_LEVELS.DEBUG, { message, data })
 }
 
 /**
  * Quick info logging
- * @param {string} message - Info message
- * @param {any} data - Info data
+ * @param message - Info message
+ * @param data - Optional info data
  */
-export function info(message, data = null) {
+export function info(message: string, data: unknown = null): void {
   log(LOG_LEVELS.INFO, { message, data })
 }
 
 /**
  * Quick warning logging
- * @param {string} message - Warning message
- * @param {any} data - Warning data
+ * @param message - Warning message
+ * @param data - Optional warning data
  */
-export function warn(message, data = null) {
+export function warn(message: string, data: unknown = null): void {
   log(LOG_LEVELS.WARN, { message, data })
 }
 
 /**
  * Quick error logging
- * @param {string} message - Error message
- * @param {any} data - Error data
+ * @param message - Error message
+ * @param data - Optional error data
  */
-export function error(message, data = null) {
+export function error(message: string, data: unknown = null): void {
   log(LOG_LEVELS.ERROR, { message, data })
 }
 
@@ -145,53 +151,51 @@ export function error(message, data = null) {
  * Test method to verify log service is working
  * Call this from browser console to test
  */
-export function testLogService() {
-  console.log('🧪 Testing LogService...')
+export function testLogService(): { success: boolean; message?: string; error?: string } {
+  debug('Testing LogService...')
 
   try {
     // Test 1: Basic string logging
-    console.log('🧪 Test 1: Basic string logging')
+    debug('Test 1: Basic string logging')
     log('This is a test message')
 
     // Test 2: Log with data
-    console.log('🧪 Test 2: Log with data')
+    debug('Test 2: Log with data')
     log('Test with data', { test: true, value: 42 })
 
     // Test 3: Number code logging
-    console.log('🧪 Test 3: Number code logging')
-    log(100, { message: 'Test message', data: 'test data' })
+    debug('Test 3: Number code logging')
+    log(LOG_LEVELS.INFO, { message: 'Test message', data: 'test data' })
 
     // Test 4: Quick functions
-    console.log('🧪 Test 4: Quick functions')
+    debug('Test 4: Quick functions')
     debug('Debug message', { debug: true })
     info('Info message', { info: true })
     warn('Warning message', { warning: true })
     error('Error message', { error: true })
 
     // Test 5: Log level control
-    console.log('🧪 Test 5: Log level control')
+    debug('Test 5: Log level control')
     const currentLevel = getLogLevel()
-    console.log('Current log level:', currentLevel)
+    debug('Current log level', { level: currentLevel })
 
     // Test 6: Change log level
-    console.log('🧪 Test 6: Change log level')
+    debug('Test 6: Change log level')
     setLogLevel(LOG_LEVELS.DEBUG)
-    console.log('New log level:', getLogLevel())
+    debug('New log level', { level: getLogLevel() })
 
     // Test 7: Test level filtering
-    console.log('🧪 Test 7: Test level filtering')
+    debug('Test 7: Test level filtering')
     log(LOG_LEVELS.DEBUG, { message: 'This should show with DEBUG level' })
 
     // Reset to original level
     setLogLevel(currentLevel)
 
-    console.log('🎉 All log service tests completed!')
+    info('All log service tests completed!')
     return { success: true, message: 'Log service working correctly' }
-  } catch (error) {
-    console.error('❌ Log service test failed:', error)
-    return { success: false, error: error.message }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    error('Log service test failed', { error: errorMessage })
+    return { success: false, error: errorMessage }
   }
 }
-
-// Export log levels for external use
-export { LOG_LEVELS }

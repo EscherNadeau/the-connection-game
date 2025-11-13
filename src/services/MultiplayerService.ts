@@ -1,5 +1,7 @@
 // MultiplayerService.ts - Reusable multiplayer system for all game modes
 
+import { debug } from './ui/log.ts'
+
 export class MultiplayerService {
   public isMobile: boolean
   public playType: string = 'solo' // solo, multi, pvp
@@ -25,7 +27,8 @@ export class MultiplayerService {
       const isMobileWidth = window.innerWidth < 768
       const isMobile = forceMobile || isMobileUA || isMobileWidth
       return isMobile
-    } catch (_) {
+    } catch (err) {
+      debug('Failed to detect mobile device, defaulting to desktop', { error: err })
       return false
     }
   }

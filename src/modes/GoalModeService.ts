@@ -2,6 +2,7 @@ import { normalizeMediaType } from '../utils/constants.ts'
 import tmdbCache from '../services/cache/tmdbCache.ts'
 import cacheService from '../services/cacheService.ts'
 import { shortestPathLength } from '../utils/graph.ts'
+import { debug, warn, error as logError } from '../services/ui/log.ts'
 
 /**
  * @typedef {import('../types/index.ts').GameOptions} GameOptions
@@ -60,7 +61,8 @@ class GoalModeService {
       if (gameType === 'knowledge') return await this.validateKnowledgeGoal(goal)
       if (gameType === 'path') return await this.validatePathGoal(goal)
       return true
-    } catch (_) {
+    } catch (err) {
+      debug('Failed to validate goal', { error: err })
       return false
     }
   }
@@ -85,7 +87,8 @@ class GoalModeService {
         }
       }
       return true
-    } catch (_) {
+    } catch (err) {
+      debug('Failed to validate path goal', { error: err })
       return true
     }
   }
@@ -172,8 +175,12 @@ class GoalModeService {
 
   checkPathBetweenItems(startItem, endItem) {
     if (!startItem || !endItem) return false
+    // Ensure items have valid IDs and are different
+    if (!startItem.id || !endItem.id) return false
+    if (startItem.id === endItem.id) return false // Same item, no path
     const d = shortestPathLength(startItem.id, endItem.id, this.connections)
-    return d >= 0
+    // shortestPathLength returns -1 if no path, or >= 0 if path exists
+    return d > 0 // Must be > 0, not >= 0 (0 means same item, which we already checked)
   }
 
   async handleImpossibleGoal() {
@@ -206,52 +213,79 @@ class GoalModeService {
 
   async checkWinCondition() {
     try {
-      console.log('🎯 GoalModeService checkWinCondition called')
-      console.log('🎯 Goal chain length:', this.goalChain.length)
-      console.log('🎯 Current goal index:', this.currentGoalIndex)
-      console.log('🎯 Game items:', this.gameItems.length)
+      debug('GoalModeService checkWinCondition called', {
+        goalChainLength: this.goalChain.length,
+        currentGoalIndex: this.currentGoalIndex,
+        gameItemsCount: this.gameItems.length
+      })
       
       const currentPair = this.getCurrentGoalPair()
-      console.log('🎯 Current pair:', currentPair)
-      console.log('🎯 Current pair start:', currentPair?.start?.name, currentPair?.start?.source)
-      console.log('🎯 Current pair target:', currentPair?.target?.name, currentPair?.target?.source)
+      debug('Current goal pair', {
+        hasPair: !!currentPair,
+        startName: currentPair?.start?.name,
+        startSource: currentPair?.start?.source,
+        targetName: currentPair?.target?.name,
+        targetSource: currentPair?.target?.source
+      })
       
       if (!currentPair) {
-        console.log('🎯 No current pair found, returning false')
+        debug('No current pair found, returning false')
         return false
       }
       
-      // Find items by ID, not by name (goal items are in the goal chain)
-      const startItem = this.gameItems.find((item) => item.id === currentPair.start.id)
-      const endItem = this.gameItems.find((item) => item.id === currentPair.target.id)
-      console.log('🎯 Start item:', startItem?.name, startItem?.source)
-      console.log('🎯 End item:', endItem?.name, endItem?.source)
+      // Find items by ID first, then fallback to matching by source if ID doesn't match
+      let startItem = this.gameItems.find((item) => item.id === currentPair.start.id)
+      let endItem = this.gameItems.find((item) => item.id === currentPair.target.id)
+      
+      // If not found by ID, try matching by source (in case items were recreated)
+      if (!startItem) {
+        startItem = this.gameItems.find((item) => item.source === 'goal1')
+      }
+      if (!endItem) {
+        endItem = this.gameItems.find((item) => item.source === 'goal2')
+      }
+      
+      debug('Goal items search', {
+        startFound: !!startItem,
+        startName: startItem?.name || startItem?.title || 'no name',
+        startSource: startItem?.source,
+        endFound: !!endItem,
+        endName: endItem?.name || endItem?.title || 'no name',
+        endSource: endItem?.source,
+        pairStartId: currentPair.start.id,
+        pairTargetId: currentPair.target.id
+      })
       
       if (!startItem || !endItem) {
-        console.log('🎯 Missing start or end item, returning false')
+        debug('Missing start or end item, returning false')
         return false
       }
       
       // Verify these are actually the goal items (not random items)
-      const isGoal1 = startItem.source === 'goal1' || startItem.source === 'goal2'
-      const isGoal2 = endItem.source === 'goal1' || endItem.source === 'goal2'
-      console.log('🎯 Is goal1 and goal2?', isGoal1, isGoal2)
+      // Start item should be goal1, end item should be goal2
+      const isStartGoal = startItem.source === 'goal1'
+      const isEndGoal = endItem.source === 'goal2'
       
-      if (!isGoal1 || !isGoal2) {
-        console.log('🎯 These are not the goal items, returning false')
+      if (!isStartGoal || !isEndGoal) {
+        debug('These are not the correct goal items (start must be goal1, end must be goal2), returning false', {
+          isStartGoal,
+          isEndGoal,
+          startSource: startItem.source,
+          endSource: endItem.source
+        })
         return false
       }
       
       const hasPath = this.checkPathBetweenItems(startItem, endItem)
-      console.log('🎯 Has path:', hasPath)
+      debug('Path check result', { hasPath })
       
       if (hasPath) {
-        console.log('🎯 WIN DETECTED!')
+        debug('WIN DETECTED!')
         return true
       }
       return false
-    } catch (error) {
-      console.log('🎯 Error in checkWinCondition:', error)
+    } catch (err) {
+      logError('Error in checkWinCondition', { error: err })
       return false
     }
   }

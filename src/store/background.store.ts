@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import BackgroundsService from '@services/ui/BackgroundsService.ts'
+import { debug } from '../services/ui/log.ts'
 
 export const useBackgroundStore = defineStore('background', {
   state: () => ({
@@ -32,7 +33,10 @@ export const useBackgroundStore = defineStore('background', {
       try {
         const storedIdx = parseInt(sessionStorage.getItem('bgIndex') || '', 10)
         if (Number.isFinite(storedIdx)) this.idx = Math.max(0, storedIdx)
-      } catch (_) {}
+      } catch (err) {
+        // Failed to load stored background index - continue with default
+        debug('Failed to load stored background index', { error: err })
+      }
       this.theme = theme || document.documentElement.getAttribute('data-theme') || 'dark'
       let urls = BackgroundsService.getAllBackgroundsSorted()
       if (!urls || !urls.length) {
@@ -57,11 +61,17 @@ export const useBackgroundStore = defineStore('background', {
         this.idx = (this.idx + 1) % this.urls.length
         try {
           sessionStorage.setItem('bgIndex', String(this.idx))
-        } catch (_) {}
+        } catch (err) {
+          // localStorage may be unavailable - continue without persistence
+          debug('Failed to save background index', { error: err })
+        }
         try {
           // Notify UI shells to play a channel switch effect
           window.dispatchEvent(new CustomEvent('crt-channel-change'))
-        } catch (_) {}
+        } catch (err) {
+          // Event dispatch failed - non-critical
+          debug('Failed to dispatch crt-channel-change event', { error: err })
+        }
       }, this.periodMs)
     },
     stop() {

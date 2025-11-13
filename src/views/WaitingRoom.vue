@@ -283,6 +283,7 @@ import { useGameStateStore } from '@store/gameState.store.ts'
 import { getRandomQuestion } from '../services/game/questions.ts'
 import SearchService from '../services/game/SearchService.ts'
 import config from '@/config/env'
+import { debug, warn, error as logError } from '../services/ui/log.ts'
 
 export default {
   name: 'WaitingRoom',
@@ -353,14 +354,12 @@ export default {
       }
       
       const withImages = filtered.filter(p => !!p.image)
-      console.log('🖼️ Posters computed:', { 
-        roster: list, 
+      debug('Posters computed', { 
+        rosterCount: list.length, 
         selfId, 
         isPvPMode: this.isPvPMode,
-        filtered, 
-        withImages,
-        rosterPlayerIds: list.map(p => p.id),
-        rosterPlayerImages: list.map(p => ({ id: p.id, image: p.image, hasImage: !!p.image }))
+        filteredCount: filtered.length, 
+        withImagesCount: withImages.length
       })
       return withImages
     },
@@ -403,12 +402,18 @@ export default {
         const url = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=${encodeURIComponent(text)}&color=FFFFFF&bgcolor=000000&format=png`
         // Just set the URL directly; browser will fetch
         this.qrDataUrl = url
-      } catch (_) {
+      } catch (err) {
+        warn('Failed to generate QR code URL', { error: err })
         this.qrDataUrl = ''
       }
     },
     copy(text) {
-      try { navigator.clipboard.writeText(String(text || '')) } catch (_) {}
+      try { 
+        navigator.clipboard.writeText(String(text || '')) 
+      } catch (err) {
+        // Clipboard API may be unavailable - non-critical
+        debug('Failed to copy to clipboard', { error: err })
+      }
     },
     baseUrlFromHost(host) {
       const port = location.port || '3000'
@@ -417,21 +422,44 @@ export default {
     async buildJoinUrl(code, overrideHost) {
       try {
         if (overrideHost) {
-          try { localStorage.setItem('preferredHostIp', overrideHost) } catch (_) {}
+          try { 
+            localStorage.setItem('preferredHostIp', overrideHost) 
+          } catch (err) {
+            // localStorage may be unavailable - continue without persistence
+          }
           const base = this.baseUrlFromHost(overrideHost)
           return `${base}/#room=${encodeURIComponent(code)}`
         }
         const resp = await fetch(`http://${location.hostname}:3011/api/hostinfo`, { cache: 'no-store' })
         const info = resp.ok ? await resp.json() : { ips: [], preferred: null }
         this.ips = Array.isArray(info.ips) ? info.ips : []
-        if (info && info.preferred) { try { localStorage.setItem('preferredHostIp', info.preferred) } catch (_) {} }
-        const fallback = (() => { try { return localStorage.getItem('preferredHostIp') } catch (_) { return null } })()
+        if (info && info.preferred) { 
+          try { 
+            localStorage.setItem('preferredHostIp', info.preferred) 
+          } catch (err) {
+            // localStorage may be unavailable - continue without persistence
+          }
+        }
+        const fallback = (() => { 
+          try { 
+            return localStorage.getItem('preferredHostIp') 
+          } catch (err) { 
+            return null 
+          } 
+        })()
         const host = info.preferred || fallback || location.hostname
         this.selectedHost = host
         const base = this.baseUrlFromHost(host)
         return `${base}/#room=${encodeURIComponent(code)}`
-      } catch (_) {
-        const host = (() => { try { return localStorage.getItem('preferredHostIp') || location.hostname } catch (_) { return location.hostname } })()
+      } catch (err) {
+        warn('Failed to build join URL, using fallback', { error: err, code })
+        const host = (() => { 
+          try { 
+            return localStorage.getItem('preferredHostIp') || location.hostname 
+          } catch (err) { 
+            return location.hostname 
+          } 
+        })()
         this.selectedHost = host
         const base = this.baseUrlFromHost(host)
         return `${base}/#room=${encodeURIComponent(code)}`
@@ -449,7 +477,10 @@ export default {
           try {
             const r = await fetch(`http://${host}:3011/api/hostinfo`, { cache: 'no-store' })
             if (r.ok) return await r.json()
-          } catch (_) {}
+          } catch (err) {
+            // Host info fetch failed for this host - try next one
+            debug('Failed to fetch host info from host', { host, error: err })
+          }
           return null
         }
         let info = await tryFetch(location.hostname)
@@ -457,12 +488,31 @@ export default {
         if (!info) info = await tryFetch('localhost')
         if (!info) throw new Error('hostinfo unavailable')
         // pick preferred and persist
-        const stored = (() => { try { return localStorage.getItem('preferredHostIp') } catch (_) { return null } })()
+        const stored = (() => { 
+          try { 
+            return localStorage.getItem('preferredHostIp') 
+          } catch (err) { 
+            return null 
+          } 
+        })()
         const host = info.preferred || stored || location.hostname
         this.selectedHost = host
-        if (info && info.preferred) { try { localStorage.setItem('preferredHostIp', info.preferred) } catch (_) {} }
-      } catch (_) {
-        const stored = (() => { try { return localStorage.getItem('preferredHostIp') } catch (_) { return null } })()
+        if (info && info.preferred) { 
+          try { 
+            localStorage.setItem('preferredHostIp', info.preferred) 
+          } catch (err) {
+            // localStorage may be unavailable - continue without persistence
+          }
+        }
+      } catch (err) {
+        warn('Failed to fetch host info, using fallback', { error: err })
+        const stored = (() => { 
+          try { 
+            return localStorage.getItem('preferredHostIp') 
+          } catch (err) { 
+            return null 
+          } 
+        })()
         this.selectedHost = stored || location.hostname
       }
     },
@@ -542,7 +592,7 @@ export default {
         this.toggleReady()
       } else if (this.isPCMultiplayer) {
         // PC Multiplayer - PC is the only player, start immediately
-        console.log('🎮 PC Multiplayer - starting game immediately')
+        debug('PC Multiplayer - starting game immediately')
         this.$emit('start-game')
       } else {
         // Couch play - start immediately
@@ -557,14 +607,11 @@ export default {
           kind: 'ready',
           isReady: this.isReady
         }
-        console.log('🎮 About to send ready data:', readyData)
-        console.log('🎮 Collab connected:', gs.collabConnected)
-        console.log('🎮 Collab client ID:', gs.collabClientId)
+        debug('Sending ready data', { readyData, collabConnected: gs.collabConnected, clientId: gs.collabClientId })
         gs.sendCollab('action', readyData)
-        console.log('🎮 PvP Ready status:', this.isReady)
-        console.log('🎮 Ready data sent successfully')
+        debug('PvP Ready status updated', { isReady: this.isReady })
       } else {
-        console.log('🎮 Collab not connected!')
+        warn('Collab not connected - cannot send ready status')
       }
     },
     // Countdown methods
@@ -612,7 +659,7 @@ export default {
         const result = await SearchService.search(this.pvpSearchQuery.trim())
         this.pvpSearchResults = result.results || []
       } catch (error) {
-        console.error('PvP search error:', error)
+        logError('PvP search error', { error })
         this.pvpSearchResults = []
       }
     },
@@ -622,7 +669,11 @@ export default {
     },
     
     selectPvPAnswer(result) {
-      console.log('🎯 PvP: Selecting answer:', result)
+      debug('PvP: Selecting answer', { 
+        title: result.title || result.name,
+        tmdbId: result.id,
+        mediaType: result.media_type
+      })
       this.pvpAnswer = result
       this.hasAnsweredPvP = true
       
@@ -635,7 +686,7 @@ export default {
           name: this.pvpPlayerName.trim(),
           color: this.pvpPlayerColor
         }
-        console.log('👤 PvP: Sending profile:', profileData)
+        debug('PvP: Sending profile', { name: profileData.name, color: profileData.color })
         gs.sendCollab('action', profileData)
         
         // Then send the answer
@@ -646,7 +697,7 @@ export default {
           tmdbId: result.id,
           mediaType: result.media_type || (result.title ? 'movie' : 'tv')
         }
-        console.log('🎬 PvP: Sending answer:', answerData)
+        debug('PvP: Sending answer', { title: answerData.title, tmdbId: answerData.tmdbId })
         gs.sendCollab('action', answerData)
       }
       
@@ -671,17 +722,17 @@ export default {
     this.playerCount = gs.playerCount || 1
     
     // Debug PvP mode detection
-    console.log('🎮 WaitingRoom mounted:', {
-      gameOptions: this.gameOptions,
+    debug('WaitingRoom mounted', {
+      gameMode: this.gameMode?.id,
       isPvPMode: this.isPvPMode,
       hasAnsweredPvP: this.hasAnsweredPvP,
-      pvpProfileReady: this.pvpProfileReady
+      pvpProfileReady: this.pvpProfileReady,
+      roomCode: this.roomCode
     })
     gs.setCollabHandlers({
       onPresence: ({ count }) => { this.playerCount = count },
       onRoster: ({ players }) => { 
-        console.log('📋 WaitingRoom: Received roster update:', players)
-        console.log('📋 WaitingRoom: Roster length:', players?.length)
+        debug('WaitingRoom: Received roster update', { playerCount: players?.length })
         
         // Check for players who just completed their profile (have name AND weren't in previous roster with name)
         const oldPlayersMap = new Map(this.roster.map(p => [p.id, p]))
@@ -691,8 +742,7 @@ export default {
           const justCompletedProfile = player.label && (!oldPlayer || !oldPlayer.label)
           
           if (justCompletedProfile) {
-            const timestamp = new Date().toLocaleTimeString()
-            console.log(`👤 PLAYER SUBMITTED PROFILE [${timestamp}]:`, {
+            debug('Player submitted profile', {
               name: player.label,
               color: player.color,
               answer: player.answerTitle || 'No answer provided',
@@ -701,22 +751,21 @@ export default {
           }
         })
         
-        console.log('📋 WaitingRoom: All players:', players?.map(p => ({ id: p.id, label: p.label, image: p.image, ready: p.ready })))
         this.roster = players || []
         this.totalPlayers = players ? players.length : 0
         
         // Count ready players
         this.readyCount = players ? players.filter(p => p.ready === true).length : 0
-        console.log('📋 WaitingRoom: Ready count:', this.readyCount, '/', this.totalPlayers)
-        console.log('📋 WaitingRoom: Players ready status:', players?.map(p => ({ id: p.id, ready: p.ready })))
-        console.log('📋 WaitingRoom: Full player data:', JSON.parse(JSON.stringify(players)))
+        debug('WaitingRoom: Ready status', { 
+          readyCount: this.readyCount, 
+          totalPlayers: this.totalPlayers 
+        })
         
         // Auto-detect PvP mode if roster has players with profiles but no game type set
         if (players && players.length > 0) {
           const hasPlayersWithProfiles = players.some(p => p.label && p.label.trim())
-          console.log('📋 WaitingRoom: Has players with profiles:', hasPlayersWithProfiles)
           if (hasPlayersWithProfiles && !this.gameOptions.playType && !this.detectedPlayType) {
-            console.log('🎮 Auto-detecting PvP mode from roster with profiles')
+            debug('Auto-detecting PvP mode from roster with profiles')
             this.detectedPlayType = 'pvp'
           }
         }
@@ -740,7 +789,7 @@ export default {
         }
         // Handle game type information
         if (payload && payload.kind === 'game_type') {
-          console.log('🎮 Received game type:', payload.playType)
+          debug('Received game type', { playType: payload.playType })
           // Set detected play type instead of modifying props
           this.detectedPlayType = payload.playType
         }
@@ -749,40 +798,43 @@ export default {
         if (payload && payload.kind === 'roster' && payload.players) {
           const hasPlayersWithProfiles = payload.players.some(p => p.label && p.label.trim())
           if (hasPlayersWithProfiles && !this.gameOptions.playType && !this.detectedPlayType) {
-            console.log('🎮 Auto-detecting PvP mode from roster with profiles')
+            debug('Auto-detecting PvP mode from roster with profiles')
             this.detectedPlayType = 'pvp'
           }
         }
         // Handle game started event
         if (payload && payload.kind === 'game_started') {
-          console.log('🎮 Game started event received from phone host!')
+          debug('Game started event received from phone host', { isPvP: payload.isPvP })
           if (payload.isPvP) {
-            console.log('🎮 PvP game starting with countdown!')
+            debug('PvP game starting with countdown')
             this.startCountdown()
           } else {
-            console.log('🎮 Couch multiplayer game starting immediately!')
+            debug('Couch multiplayer game starting immediately')
             this.$emit('start-game')
           }
         }
         // Handle ready status updates
         if (payload && payload.kind === 'ready') {
-          console.log('🎮 Received ready status update:', payload)
+          debug('Received ready status update', { payload })
           // Update ready players list if needed
         }
       },
     })
-    console.log('🔌 WaitingRoom: Attempting to connect to:', config.wsUrl)
-    console.log('🔌 WaitingRoom: Room code:', this.roomCode)
+    debug('WaitingRoom: Attempting to connect', { wsUrl: config.wsUrl, roomCode: this.roomCode })
     if (this.roomCode) {
       gs.connectCollab(config.wsUrl)
-      console.log('🔌 WaitingRoom: Connection initiated')
+      debug('WaitingRoom: Connection initiated')
     } else {
-      console.log('🔌 WaitingRoom: No room code, skipping connection')
+      debug('WaitingRoom: No room code, skipping connection')
     }
     // Request the current shared prompt for category display, then host-pick if none
     setTimeout(() => {
-      console.log('🔌 WaitingRoom: Connection status after 1s:', gs.collabConnected)
-    try { if (gs.collabConnected) gs.sendCollab('action', { kind: 'prompt_request' }) } catch (_) {}
+      debug('WaitingRoom: Connection status after 1s', { connected: gs.collabConnected })
+      try { 
+        if (gs.collabConnected) gs.sendCollab('action', { kind: 'prompt_request' }) 
+      } catch (err) {
+        debug('Failed to send prompt request', { error: err })
+      }
     }, 1000)
     setTimeout(() => {
       try {
@@ -794,7 +846,9 @@ export default {
             this.prompt = text
           }
         }
-      } catch (_) {}
+      } catch (err) {
+        debug('Failed to set default prompt', { error: err })
+      }
     }, 700)
     // Generate join URL + QR
     this.fetchHostInfo().then(() => {

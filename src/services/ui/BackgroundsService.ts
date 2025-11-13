@@ -39,7 +39,10 @@ export async function getBackgroundUrlsAsync(theme = 'dark') {
     const t = String(theme || 'dark').toLowerCase()
     if (t === 'light' && Array.isArray(data.light) && data.light.length) return data.light
     if (Array.isArray(data.dark) && data.dark.length) return data.dark
-  } catch (_) {}
+  } catch (err) {
+    // Failed to fetch backgrounds - return fallback URLs
+    // This is non-critical as we have fallback URLs
+  }
   return urls
 }
 

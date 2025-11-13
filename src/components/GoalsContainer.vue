@@ -161,7 +161,6 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-// @ts-ignore
 import GoalItem from './GoalItem.vue'
 import type { GoalsContainerProps, GoalsContainerEmits, GoalData, SearchResult } from '../types/game'
 

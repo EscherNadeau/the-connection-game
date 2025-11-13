@@ -353,8 +353,7 @@ Next
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import type { StartScreenProps, StartScreenEmits } from '../types/game'
 
-// @ts-ignore
-import { log } from '../services/ui/log.ts'
+import { info, debug } from '../services/ui/log.ts'
 
 const props = withDefaults(defineProps<StartScreenProps>(), {
   showTutorial: false,
@@ -374,14 +373,14 @@ const joinCode = ref('')
 
 // Toggle play menu
 const togglePlayMenu = () => {
-  log('info', `Toggle play menu clicked, current state: ${showPlayMenu.value}`)
+  info( `Toggle play menu clicked, current state: ${showPlayMenu.value}`)
   showPlayMenu.value = !showPlayMenu.value
-  log('info', `New menu state: ${showPlayMenu.value}`)
+  info( `New menu state: ${showPlayMenu.value}`)
 }
 
 // Menu options
 const selectSolo = () => {
-  log('info', 'Solo selected')
+  info( 'Solo selected')
   showPlayMenu.value = false
   if (props.showTutorial && (props.tutorialStep === 6 || props.tutorialStep === 5.1)) {
     // Tutorial step - go to mode screen and advance tutorial
@@ -397,21 +396,21 @@ const selectSolo = () => {
 }
 
 const selectMultiplayer = () => {
-  log('info', 'Multiplayer selected - showing sub-menu')
+  info( 'Multiplayer selected - showing sub-menu')
   selectedPlayMode.value = 'Multiplayer'
   showPlayMenu.value = false
   showCouchMenu.value = true
 }
 
 const selectPvP = () => {
-  log('info', 'PvP selected - showing sub-menu')
+  info( 'PvP selected - showing sub-menu')
   selectedPlayMode.value = 'PvP'
   showPlayMenu.value = false
   showCouchMenu.value = true
 }
 
 const selectPC = () => {
-  log('info', 'PC Only selected')
+  info( 'PC Only selected')
   showCouchMenu.value = false
   const mode = selectedPlayMode.value.toLowerCase()
   if (props.showTutorial && (props.tutorialStep === 6 || props.tutorialStep === 5.1)) {
@@ -428,7 +427,7 @@ const selectPC = () => {
 }
 
 const selectCouchOption = () => {
-  log('info', `Phone-Couch ${selectedPlayMode.value} selected`)
+  info( `Phone-Couch ${selectedPlayMode.value} selected`)
   showCouchMenu.value = false
   const mode = selectedPlayMode.value === 'Multiplayer' ? 'couch-multiplayer' : 'couch-pvp'
   if (props.showTutorial && (props.tutorialStep === 6 || props.tutorialStep === 5.1)) {
@@ -441,19 +440,19 @@ const selectCouchOption = () => {
 }
 
 const handleHowToPlay = () => {
-  log('info', 'How to Play clicked - showing welcome')
+  info( 'How to Play clicked - showing welcome')
   emit('tutorial-start')
 }
 
 const startTutorial = () => {
-  log('info', 'Start tutorial button clicked')
+  info( 'Start tutorial button clicked')
   // Start with "But what is The Connection Game?" explanation
   emit('tutorial-next')
-  log('info', 'Tutorial next emitted')
+  info( 'Tutorial next emitted')
 }
 
 const closeCompletion = () => {
-  log('info', 'Close completion popup clicked')
+  info( 'Close completion popup clicked')
   // Emit event to parent to reset the flag and hide the popup
   emit('tutorial-completion-shown')
 }
@@ -480,7 +479,7 @@ const handlePlayMenuClick = () => {
       togglePlayMenu()
     } else if (props.tutorialStep === 5) {
       // Show "You picked Play Game" message
-      console.log('Emitting tutorial-step 5.1')
+      debug('Emitting tutorial-step 5.1')
       emit('tutorial-step', 5.1)
       togglePlayMenu()
     } else if (props.tutorialStep === 5.2) {
@@ -518,7 +517,7 @@ const handlePlaylistMenuClick = () => {
       togglePlaylistMenu()
     } else if (props.tutorialStep === 5) {
       // Show "You picked Shows" message
-      console.log('Emitting tutorial-step 5.2')
+      debug('Emitting tutorial-step 5.2')
       emit('tutorial-step', 5.2)
       togglePlaylistMenu()
     } else if (props.tutorialStep === 5.1) {
@@ -534,9 +533,9 @@ const handlePlaylistMenuClick = () => {
 }
 
 const toggleJoinMenu = () => {
-  log('info', `Toggle join menu clicked, current state: ${showJoinMenu.value}`)
+  info( `Toggle join menu clicked, current state: ${showJoinMenu.value}`)
   showJoinMenu.value = !showJoinMenu.value
-  log('info', `New join menu state: ${showJoinMenu.value}`)
+  info( `New join menu state: ${showJoinMenu.value}`)
   if (showJoinMenu.value) {
     // Focus input after animation
     setTimeout(() => {
@@ -550,7 +549,7 @@ const submitJoin = () => {
   const code = joinCode.value.trim()
   if (!code) return
   
-  log('info', `Join game submitted with code: ${code}`)
+  info( `Join game submitted with code: ${code}`)
   showJoinMenu.value = false
   joinCode.value = ''
   if (props.showTutorial && props.tutorialStep === 7) {
@@ -562,13 +561,13 @@ const submitJoin = () => {
 }
 
 const togglePlaylistMenu = () => {
-  log('info', `Toggle playlist menu clicked, current state: ${showPlaylistMenu.value}`)
+  info( `Toggle playlist menu clicked, current state: ${showPlaylistMenu.value}`)
   showPlaylistMenu.value = !showPlaylistMenu.value
-  log('info', `New playlist menu state: ${showPlaylistMenu.value}`)
+  info( `New playlist menu state: ${showPlaylistMenu.value}`)
 }
 
 const createPlaylist = () => {
-  log('info', 'Create show selected')
+  info( 'Create show selected')
   showPlaylistMenu.value = false
   if (props.showTutorial && props.tutorialStep === 5.2) {
     // Tutorial step - advance to welcome step in creator AND navigate to custom mode
@@ -580,7 +579,7 @@ const createPlaylist = () => {
 }
 
 const playPlaylist = () => {
-  log('info', 'Play show selected')
+  info( 'Play show selected')
   showPlaylistMenu.value = false
   if (props.showTutorial && props.tutorialStep === 8) {
     // Tutorial step - don't advance, let user click Next button
@@ -592,7 +591,7 @@ const playPlaylist = () => {
 
 // Lifecycle
 onMounted(() => {
-  log('info', 'StartScreen mounted')
+  info( 'StartScreen mounted')
 })
 
 // Watch for tutorial completion to show completion popup
@@ -603,7 +602,7 @@ watch(() => props.tutorialJustCompleted, (newVal) => {
 })
 
 onUnmounted(() => {
-  log('info', 'StartScreen unmounted')
+  info( 'StartScreen unmounted')
 })
 </script>
 
