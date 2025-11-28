@@ -74,6 +74,25 @@ const isPanning = ref<boolean>(false)
 const isDraggingItem = ref<boolean>(false)
 const spawnIndex = ref<number>(0)
 
+// Cache DOM element reference for performance
+let cachedContainerRect: DOMRect | null = null
+let containerRectTimeout: ReturnType<typeof setTimeout> | null = null
+
+function getContainerRect(): DOMRect {
+  if (!cachedContainerRect) {
+    const container = document.querySelector('.game-board-container') as HTMLElement
+    if (container) {
+      cachedContainerRect = container.getBoundingClientRect()
+      // Invalidate cache after a short delay (handles window resize)
+      if (containerRectTimeout) clearTimeout(containerRectTimeout)
+      containerRectTimeout = setTimeout(() => {
+        cachedContainerRect = null
+      }, 100)
+    }
+  }
+  return cachedContainerRect || new DOMRect()
+}
+
       // Auto-connect system
 const autoConnectIntervalId = ref<ReturnType<typeof setInterval> | null>(null)
 
@@ -231,9 +250,11 @@ function startItemDrag(event: MouseEvent, item: GameItemType, index: number): vo
   // Set dragging state on the item
   item.isDragging = true
   
-  // Get the game board container rect for proper coordinate calculation
-  const gameBoardContainer = document.querySelector('.game-board-container') as HTMLElement
-  const containerRect = gameBoardContainer.getBoundingClientRect()
+  // Pause physics during drag for better performance
+  physicsService.pause()
+  
+  // Get cached container rect for proper coordinate calculation
+  const containerRect = getContainerRect()
   const mouseX = event.clientX - containerRect.left
   const mouseY = event.clientY - containerRect.top
   
@@ -259,9 +280,8 @@ function onItemMouseMove(event: MouseEvent): void {
 
 function handleGlobalMouseMove(event: MouseEvent): void {
   if (dragState.value.isDragging && dragState.value.dragItem) {
-    // Get the game board container rect for proper coordinate calculation
-    const gameBoardContainer = document.querySelector('.game-board-container') as HTMLElement
-    const containerRect = gameBoardContainer.getBoundingClientRect()
+    // Use cached container rect for performance
+    const containerRect = getContainerRect()
     const mouseX = event.clientX - containerRect.left
     const mouseY = event.clientY - containerRect.top
     
@@ -269,7 +289,7 @@ function handleGlobalMouseMove(event: MouseEvent): void {
     const newX = (mouseX - dragState.value.offsetX) / viewport.value.scale
     const newY = (mouseY - dragState.value.offsetY) / viewport.value.scale
     
-    // Update item position
+    // Update item position directly (no reactivity overhead)
     dragState.value.dragItem.x = newX
     dragState.value.dragItem.y = newY
   }
@@ -277,9 +297,8 @@ function handleGlobalMouseMove(event: MouseEvent): void {
 
 function handleGlobalMouseUp(event: MouseEvent): void {
   if (dragState.value.isDragging && dragState.value.dragItem) {
-    // Get the game board container rect for proper coordinate calculation
-    const gameBoardContainer = document.querySelector('.game-board-container') as HTMLElement
-    const containerRect = gameBoardContainer.getBoundingClientRect()
+    // Use cached container rect for performance
+    const containerRect = getContainerRect()
     const mouseX = event.clientX - containerRect.left
     const mouseY = event.clientY - containerRect.top
     
@@ -302,16 +321,22 @@ function handleGlobalMouseUp(event: MouseEvent): void {
     
     // Reset drag state
     dragState.value = {
-        isDragging: false,
-        dragItem: null,
-        dragIndex: -1,
-        startX: 0,
-        startY: 0,
-        offsetX: 0,
-        offsetY: 0,
-      }
+      isDragging: false,
+      dragItem: null,
+      dragIndex: -1,
+      startX: 0,
+      startY: 0,
+      offsetX: 0,
+      offsetY: 0,
+    }
 
     isDraggingItem.value = false
+    
+    // Resume physics after drag
+    physicsService.resume()
+    
+    // Invalidate container rect cache
+    cachedContainerRect = null
   }
 }
 

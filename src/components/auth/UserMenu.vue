@@ -57,14 +57,7 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
           </svg>
-          Profile
-        </button>
-
-        <button class="menu-item" @click="handleStats">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
-          </svg>
-          Statistics
+          Profile & Stats
         </button>
 
         <button class="menu-item" @click="handleLeaderboard">
@@ -90,13 +83,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuth } from '../../composables/useAuth'
-
-defineEmits<{
-  (e: 'open-auth'): void
-  (e: 'open-profile'): void
-  (e: 'open-stats'): void
-  (e: 'open-leaderboard'): void
-}>()
 
 const { user, isAuthenticated, displayName, initials, signOut } = useAuth()
 
@@ -148,19 +134,22 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
+const emit = defineEmits<{
+  (e: 'open-auth'): void
+  (e: 'open-profile'): void
+  (e: 'open-stats'): void
+  (e: 'open-leaderboard'): void
+}>()
+
 const handleProfile = () => {
   closeMenu()
-  // Emit event to parent to open profile modal
+  emit('open-profile')
 }
 
-const handleStats = () => {
-  closeMenu()
-  // Emit event to parent to open stats
-}
 
 const handleLeaderboard = () => {
   closeMenu()
-  // Emit event to parent to open leaderboard
+  emit('open-leaderboard')
 }
 
 const handleSignOut = async () => {

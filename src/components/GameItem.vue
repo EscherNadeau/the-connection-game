@@ -51,19 +51,24 @@ import type { GameItem, GameItemProps, GameItemEmits } from '../types/game'
 const props = defineProps<GameItemProps>()
 const emit = defineEmits<GameItemEmits>()
 
-// Computed properties
+// Computed properties - use transform for GPU acceleration
 const itemStyle = computed(() => {
-  // Item.x/y are world-space centers; viewport transform handles pan/zoom
+  const x = props.item.x
+  const y = props.item.y
+  
+  // Use transform instead of left/top for better performance
   const style: Record<string, string> = {
     position: 'absolute',
-    left: `${props.item.x}px`,
-    top: `${props.item.y}px`,
-    transform: 'translate(-50%, -50%)',
+    left: '0',
+    top: '0',
+    transform: `translate(${x - 70}px, ${y - 100}px)`, // Offset by half width/height
   }
+  
   if (props.item.accentColor) {
-    style.border = `2px solid ${props.item.accentColor}`
-    style.boxShadow = `0 0 12px ${props.item.accentColor}66`
+    style.borderColor = props.item.accentColor
+    style.boxShadow = `0 0 8px ${props.item.accentColor}66`
   }
+  
   return style
 })
 
@@ -139,22 +144,20 @@ function handleImageError(event: Event): void {
 .game-item {
   width: 140px;
   height: 200px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(30, 30, 40, 0.95);
   border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
   cursor: grab;
-  transition: box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
   user-select: none;
   overflow: hidden;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  will-change: transform, left, top;
+  /* Removed backdrop-filter for performance */
+  will-change: transform;
+  contain: layout style paint;
 }
 
 .game-item.dimmed {
   opacity: 0.25;
   filter: grayscale(0.9) brightness(0.7);
-  transition: opacity 0.3s ease, filter 0.3s ease;
 }
 
 .hint-btn {
@@ -173,18 +176,16 @@ function handleImageError(event: Event): void {
   align-items: center;
   justify-content: center;
   z-index: 10;
-  transition: background 0.2s ease;
 }
 
 .hint-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.3);
 }
 
-.game-item:hover {
-  background: rgba(255, 255, 255, 0.15);
+.game-item:hover:not(.dragging) {
+  background: rgba(50, 50, 60, 0.98);
   border-color: rgba(255, 255, 255, 0.4);
-  transform: translate(-50%, -50%) scale(1.05);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .game-item.starting-item {
@@ -201,12 +202,10 @@ function handleImageError(event: Event): void {
 
 .game-item.dragging {
   cursor: grabbing !important;
-  transform: translate(-50%, -50%) scale(1.1) !important;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5) !important;
   z-index: 100 !important;
   border-color: rgba(255, 215, 0, 1) !important;
   background: rgba(255, 215, 0, 0.2) !important;
-  transition: none !important;
 }
 
 .item-image {

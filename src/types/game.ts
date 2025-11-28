@@ -20,6 +20,9 @@ export interface GameItem {
   tmdbId?: number
   isStartingItem?: boolean
   isDragging?: boolean
+  // Physics properties
+  vx?: number
+  vy?: number
   accentColor?: string
   addedBy?: string
 }

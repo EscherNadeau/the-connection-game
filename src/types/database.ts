@@ -224,9 +224,9 @@ export interface Database {
         Row: {
           id: string
           user_id: string
-          game_id: string
+          game_id: string | null
           mode: GameMode
-          play_type: PlayType
+          play_type: PlayType | null
           result: GameResult
           score: number
           duration_ms: number
@@ -237,9 +237,9 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
-          game_id: string
+          game_id?: string | null
           mode: GameMode
-          play_type: PlayType
+          play_type?: PlayType | null
           result: GameResult
           score?: number
           duration_ms?: number

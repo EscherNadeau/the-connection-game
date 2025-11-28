@@ -1,4 +1,4 @@
-import { log } from '../ui/log.ts'
+import { debug } from '../ui/log'
 import type { GameItem } from '../../types/game'
 
 interface LayoutCenter {
@@ -6,60 +6,85 @@ interface LayoutCenter {
   y: number
 }
 
+interface Viewport {
+  x: number
+  y: number
+  scale: number
+}
+
 type GetGameItemsCallback = () => GameItem[]
 type OnUpdateCallback = () => void
+
+// Spatial hash cell size - items within same/adjacent cells are checked
+const CELL_SIZE = 150
 
 class PhysicsService {
   private enabled: boolean = true
   private layoutCenter: LayoutCenter = { x: 0, y: 0 }
-  private repulsionStrength: number = 20 // Reduced for smoother movement
-  private centerAttractionStrength: number = 0.1 // Reduced center attraction
   private animationFrameId: number | null = null
   private isRunning: boolean = false
   private callbacks: OnUpdateCallback[] = []
   private itemsMoving: boolean = false
   private idleFrames: number = 0
-  private maxIdleFrames: number = 30 // Pause after 30 frames of no movement
+  private maxIdleFrames: number = 20
+  private lastUpdateTime: number = 0
+  private targetFPS: number = 30 // Reduce to 30 FPS for physics
+  private frameInterval: number = 1000 / 30
+  
+  // Spatial hashing for O(n) collision detection
+  private spatialHash: Map<string, GameItem[]> = new Map()
+  
+  // Performance tuning
+  private maxItemsForFullPhysics: number = 50
+  private physicsEnabled: boolean = true
 
   start(getGameItems: GetGameItemsCallback, onUpdate: OnUpdateCallback): void {
     if (this.isRunning) return
 
     this.isRunning = true
     this.callbacks.push(onUpdate)
+    this.lastUpdateTime = performance.now()
 
-    // Initialize layout center with reasonable default values
-    this.updateLayoutCenter(800, 600) // Default viewport size
-
-    // Use requestAnimationFrame for better performance
+    this.updateLayoutCenter(800, 600)
     this.animate(getGameItems)
 
-    log(2000, { message: 'Physics service started' })
+    debug('[Physics] Service started')
   }
 
-  animate(getGameItems) {
+  animate(getGameItems: GetGameItemsCallback): void {
     if (!this.isRunning) return
 
-    if (this.enabled) {
-      const gameItems = typeof getGameItems === 'function' ? getGameItems() : getGameItems
-      if (gameItems && gameItems.length > 0) {
-        const wasMoving = this.itemsMoving
-        this.update(gameItems)
+    const now = performance.now()
+    const elapsed = now - this.lastUpdateTime
+
+    // Throttle to target FPS
+    if (elapsed >= this.frameInterval) {
+      this.lastUpdateTime = now - (elapsed % this.frameInterval)
+
+      if (this.enabled && this.physicsEnabled) {
+        const gameItems = typeof getGameItems === 'function' ? getGameItems() : getGameItems
         
-        // Check if items are still moving
-        this.checkMovement(gameItems)
-        
-        // Only call callbacks if something changed or items are moving
-        if (this.itemsMoving || wasMoving) {
-          this.callbacks.forEach((callback) => callback())
+        if (gameItems && gameItems.length > 0) {
+          // Disable full physics if too many items
+          if (gameItems.length > this.maxItemsForFullPhysics) {
+            this.updateLite(gameItems)
+          } else {
+            this.update(gameItems)
+          }
+
+          this.checkMovement(gameItems)
+
+          if (this.itemsMoving) {
+            this.callbacks.forEach((callback) => callback())
+          }
         }
       }
     }
 
-    // Continue animation loop
     this.animationFrameId = requestAnimationFrame(() => this.animate(getGameItems))
   }
 
-  stop() {
+  stop(): void {
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId)
       this.animationFrameId = null
@@ -68,39 +93,108 @@ class PhysicsService {
     this.callbacks = []
     this.itemsMoving = false
     this.idleFrames = 0
-    log(2000, { message: 'Physics service stopped' })
+    this.spatialHash.clear()
+    debug('[Physics] Service stopped')
   }
 
-  updateLayoutCenter(width, height) {
-    this.layoutCenter = {
-      x: width / 2,
-      y: height / 2,
-    }
+  updateLayoutCenter(width: number, height: number): void {
+    this.layoutCenter = { x: width / 2, y: height / 2 }
   }
 
-  // Method to update center when viewport changes
-  updateCenterFromViewport(viewport) {
-    // Calculate the center of the current viewport
+  updateCenterFromViewport(viewport: Viewport): void {
     this.layoutCenter = {
       x: -viewport.x + window.innerWidth / 2 / viewport.scale,
       y: -viewport.y + window.innerHeight / 2 / viewport.scale,
     }
   }
 
-  update(gameItems) {
+  // Build spatial hash for efficient collision detection
+  private buildSpatialHash(items: GameItem[]): void {
+    this.spatialHash.clear()
+    
+    for (const item of items) {
+      const cellX = Math.floor(item.x / CELL_SIZE)
+      const cellY = Math.floor(item.y / CELL_SIZE)
+      const key = `${cellX},${cellY}`
+      
+      if (!this.spatialHash.has(key)) {
+        this.spatialHash.set(key, [])
+      }
+      this.spatialHash.get(key)!.push(item)
+    }
+  }
+
+  // Get nearby items using spatial hash
+  private getNearbyItems(item: GameItem): GameItem[] {
+    const cellX = Math.floor(item.x / CELL_SIZE)
+    const cellY = Math.floor(item.y / CELL_SIZE)
+    const nearby: GameItem[] = []
+    
+    // Check 3x3 grid of cells around item
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const key = `${cellX + dx},${cellY + dy}`
+        const cellItems = this.spatialHash.get(key)
+        if (cellItems) {
+          for (const other of cellItems) {
+            if (other !== item) {
+              nearby.push(other)
+            }
+          }
+        }
+      }
+    }
+    
+    return nearby
+  }
+
+  update(gameItems: GameItem[]): void {
     if (gameItems.length === 0) return
 
-    // Only apply physics to items that aren't being dragged
     const activeItems = gameItems.filter((item) => !item.isDragging)
-
     if (activeItems.length === 0) return
 
+    // Build spatial hash for efficient lookup
+    this.buildSpatialHash(activeItems)
+    
     const forces = this.calculateForces(activeItems)
     this.applyForces(activeItems, forces)
   }
 
-  checkMovement(gameItems) {
-    // Check if any items are moving
+  // Lite physics for many items - only resolve immediate overlaps
+  updateLite(gameItems: GameItem[]): void {
+    if (gameItems.length === 0) return
+
+    const activeItems = gameItems.filter((item) => !item.isDragging)
+    if (activeItems.length === 0) return
+
+    // Simple overlap resolution without full physics
+    this.buildSpatialHash(activeItems)
+    
+    for (const item of activeItems) {
+      const nearby = this.getNearbyItems(item)
+      
+      for (const other of nearby) {
+        const dx = other.x - item.x
+        const dy = other.y - item.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        
+        if (dist < 100 && dist > 0) {
+          // Push apart gently
+          const push = (100 - dist) * 0.1
+          const nx = dx / dist
+          const ny = dy / dist
+          
+          item.x -= nx * push * 0.5
+          item.y -= ny * push * 0.5
+          other.x += nx * push * 0.5
+          other.y += ny * push * 0.5
+        }
+      }
+    }
+  }
+
+  checkMovement(gameItems: GameItem[]): void {
     const activeItems = gameItems.filter((item) => !item.isDragging)
     let anyMoving = false
 
@@ -123,56 +217,59 @@ class PhysicsService {
     }
   }
 
-  calculateForces(gameItems) {
-    const forces = []
-    const minDistance = 120 // Reduced distance - closer together
-    const itemWidth = 120 // Actual item width
-    const itemHeight = 200 // Actual item height
+  calculateForces(gameItems: GameItem[]): { x: number; y: number }[] {
+    const forces: { x: number; y: number }[] = []
+    const itemWidth = 120
+    const itemHeight = 200
 
-    // Initialize forces array for all items
+    // Initialize forces
     for (let i = 0; i < gameItems.length; i++) {
       forces[i] = { x: 0, y: 0 }
     }
 
-    // Check for rectangular overlaps - proper hitbox detection
+    // Use spatial hash for efficient collision detection
     for (let i = 0; i < gameItems.length; i++) {
-      for (let j = i + 1; j < gameItems.length; j++) {
-        const item1 = gameItems[i]
-        const item2 = gameItems[j]
+      const item = gameItems[i]
+      if (!item) continue
+      
+      const nearby = this.getNearbyItems(item)
+      
+      for (const other of nearby) {
+        const j = gameItems.indexOf(other)
+        if (j <= i) continue // Avoid duplicate pairs
 
-        // Calculate rectangular boundaries
-        const left1 = item1.x - itemWidth / 2
-        const right1 = item1.x + itemWidth / 2
-        const top1 = item1.y - itemHeight / 2
-        const bottom1 = item1.y + itemHeight / 2
+        // Rectangular overlap check
+        const left1 = item.x - itemWidth / 2
+        const right1 = item.x + itemWidth / 2
+        const top1 = item.y - itemHeight / 2
+        const bottom1 = item.y + itemHeight / 2
 
-        const left2 = item2.x - itemWidth / 2
-        const right2 = item2.x + itemWidth / 2
-        const top2 = item2.y - itemHeight / 2
-        const bottom2 = item2.y + itemHeight / 2
+        const left2 = other.x - itemWidth / 2
+        const right2 = other.x + itemWidth / 2
+        const top2 = other.y - itemHeight / 2
+        const bottom2 = other.y + itemHeight / 2
 
-        // Check if rectangles overlap
         const overlapX = Math.max(0, Math.min(right1, right2) - Math.max(left1, left2))
         const overlapY = Math.max(0, Math.min(bottom1, bottom2) - Math.max(top1, top2))
 
         if (overlapX > 0 && overlapY > 0) {
-          // Items are overlapping - push them apart with consistent force
-          const dx = item2.x - item1.x
-          const dy = item2.y - item1.y
+          const dx = other.x - item.x
+          const dy = other.y - item.y
           const distance = Math.sqrt(dx * dx + dy * dy)
 
           if (distance > 0) {
-            const pushForce = 3.0 // Gentler push force for smoother movement
-
-            // Calculate direction
+            const pushForce = 2.5
             const unitX = dx / distance
             const unitY = dy / distance
 
-            // Apply equal and opposite forces
-            forces[i].x -= unitX * pushForce
-            forces[i].y -= unitY * pushForce
-            forces[j].x += unitX * pushForce
-            forces[j].y += unitY * pushForce
+            const forceI = forces[i]
+            const forceJ = forces[j]
+            if (forceI && forceJ) {
+              forceI.x -= unitX * pushForce
+              forceI.y -= unitY * pushForce
+              forceJ.x += unitX * pushForce
+              forceJ.y += unitY * pushForce
+            }
           }
         }
       }
@@ -181,22 +278,19 @@ class PhysicsService {
     return forces
   }
 
-  applyForces(gameItems, forces) {
+  applyForces(gameItems: GameItem[], forces: { x: number; y: number }[]): void {
     for (let i = 0; i < gameItems.length; i++) {
       const item = gameItems[i]
       const force = forces[i]
+      if (!item || !force) continue
 
-      // Very simple physics - just apply force and dampen
-      item.vx = (item.vx || 0) * 0.9 + force.x * 0.1
-      item.vy = (item.vy || 0) * 0.9 + force.y * 0.1
+      // Apply force with damping
+      item.vx = (item.vx || 0) * 0.85 + force.x * 0.15
+      item.vy = (item.vy || 0) * 0.85 + force.y * 0.15
 
       // Stop very slow movement
-      if (Math.abs(item.vx) < 0.1) {
-        item.vx = 0
-      }
-      if (Math.abs(item.vy) < 0.1) {
-        item.vy = 0
-      }
+      if (Math.abs(item.vx) < 0.05) item.vx = 0
+      if (Math.abs(item.vy) < 0.05) item.vy = 0
 
       // Update position
       item.x += item.vx
@@ -204,20 +298,32 @@ class PhysicsService {
     }
   }
 
-  setRepulsionStrength(strength) {
-    this.repulsionStrength = strength
+  // Pause physics during intensive operations
+  pause(): void {
+    this.physicsEnabled = false
   }
 
-  setCenterAttractionStrength(strength) {
-    this.centerAttractionStrength = strength
+  resume(): void {
+    this.physicsEnabled = true
   }
 
-  enable() {
+  enable(): void {
     this.enabled = true
   }
 
-  disable() {
+  disable(): void {
     this.enabled = false
+  }
+
+  // Set max items before switching to lite mode
+  setMaxItemsForFullPhysics(count: number): void {
+    this.maxItemsForFullPhysics = count
+  }
+
+  // Set target FPS
+  setTargetFPS(fps: number): void {
+    this.targetFPS = Math.min(60, Math.max(10, fps))
+    this.frameInterval = 1000 / this.targetFPS
   }
 }
 

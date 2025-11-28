@@ -124,6 +124,7 @@ import { usePvPGame } from '../composables/usePvPGame.ts'
 import { useBackgrounds } from '../composables/useBackgrounds.ts'
 import { useCollaboration } from '../composables/useCollaboration.ts'
 import { useGoalManagement } from '../composables/useGoalManagement.ts'
+import { useGameStats } from '../composables/useGameStats.ts'
 import { debug, warn, error as logError } from '../services/ui/log.ts'
 
 export default {
@@ -143,7 +144,8 @@ export default {
     const backgrounds = useBackgrounds()
     const collaboration = useCollaboration()
     const goalManagement = useGoalManagement()
-    return { timerEnabled, timerRemaining, ...pvpGame, ...backgrounds, ...collaboration, ...goalManagement }
+    const gameStats = useGameStats()
+    return { timerEnabled, timerRemaining, ...pvpGame, ...backgrounds, ...collaboration, ...goalManagement, ...gameStats }
   },
   data() {
     return {
@@ -169,8 +171,11 @@ export default {
     goBack() {
       debug('Back button clicked - ending game and navigating to mode selection')
       
+      // Cancel game stats tracking (don't save incomplete games)
+      this.cancelGame()
+      
       // End the current game properly
-      this.endGame()
+      this.endGameCleanup()
       
       // Preserve play type (solo/multi) in both hash and sessionStorage
       try {
@@ -201,7 +206,7 @@ export default {
       // Navigate back to mode selection
       this.$emit('back-to-mode-selection')
     },
-    endGame() {
+    endGameCleanup() {
       
       // Send end game action to server
       this.sendEndGame()
@@ -263,6 +268,9 @@ export default {
       if (gs.timerEnabled) gs.startTimer()
     },
     onTimerExpired() {
+      // Save game stats as a loss
+      this.endGame('lose', 0)
+      
       this.resultModal = {
         visible: true,
         type: 'lose',
@@ -476,6 +484,9 @@ export default {
       })
       
       if (from && to) {
+        // Track connection for stats
+        this.trackConnection()
+        
         // Show popup for successful connection
         PopupService.showConnectionSuccess(from, to)
         
@@ -505,6 +516,12 @@ export default {
     },
     onGoalCompleted(goalData) {
       debug('onGoalCompleted received', { goalData })
+      
+      // Save game stats based on result
+      const isLoss = goalData?.lost === true
+      const score = goalData?.stats?.score || 0
+      this.endGame(isLoss ? 'lose' : 'win', score)
+      
       // Delegate to composable so it saves pathIds and controls modal/bottom bar
       const resultModalRef = { value: this.resultModal }
       // Pass PvP handler if available (optional)
@@ -661,6 +678,10 @@ export default {
       gameMode: this.gameMode?.id,
       currentGoalIndex: this.gameOptions?.currentGoalIndex
     })
+    
+    // Start tracking game stats
+    const modeName = this.gameMode?.id || this.gameMode?.name || 'goal'
+    this.startGame(modeName)
     
     // Initialize backgrounds
     await this.initializeBackgrounds()

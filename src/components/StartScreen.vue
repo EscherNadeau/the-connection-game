@@ -2,11 +2,21 @@
   <div class="container">
     <!-- Auth Button in top right -->
     <div class="auth-corner">
-      <UserMenu @open-auth="showAuthModal = true" />
+      <UserMenu 
+        @open-auth="showAuthModal = true" 
+        @open-profile="showProfile = true"
+      />
     </div>
 
     <!-- Auth Modal -->
     <AuthModal :is-open="showAuthModal" @close="showAuthModal = false" @authenticated="onAuthenticated" />
+
+    <!-- Profile Panel -->
+    <ProfilePanel 
+      v-if="showProfile" 
+      @close="showProfile = false" 
+      @open-auth="showProfile = false; showAuthModal = true"
+    />
 
     <!-- Header with title -->
     <div class="header">
@@ -362,6 +372,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import type { StartScreenProps, StartScreenEmits } from '../types/game'
 import UserMenu from './auth/UserMenu.vue'
 import AuthModal from './auth/AuthModal.vue'
+import ProfilePanel from './profile/ProfilePanel.vue'
 import { info, debug } from '../services/ui/log.ts'
 
 const props = withDefaults(defineProps<StartScreenProps>(), {
@@ -380,6 +391,7 @@ const showJoinMenu = ref(false)
 const showPlaylistMenu = ref(false)
 const joinCode = ref('')
 const showAuthModal = ref(false)
+const showProfile = ref(false)
 
 // Auth callback
 const onAuthenticated = () => {
