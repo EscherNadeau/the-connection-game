@@ -87,7 +87,7 @@
           @click="addSearchResult(result)"
         >
           <div class="search-result-image">
-            <img v-if="result.image" :src="result.image" :alt="result.name" />
+            <img loading="lazy" decoding="async" v-if="result.image" :src="result.image" :alt="result.name" />
             <div v-else class="search-result-icon">
               {{ getResultIcon(result.type) }}
             </div>

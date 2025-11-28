@@ -196,10 +196,10 @@ class ItemService {
     if (!tmdbResult) return null
 
     if (tmdbResult.poster_path) {
-      return `https://image.tmdb.org/t/p/w500${tmdbResult.poster_path}`
+      return `https://image.tmdb.org/t/p/w185${tmdbResult.poster_path}`
     }
     if (tmdbResult.profile_path) {
-      return `https://image.tmdb.org/t/p/w500${tmdbResult.profile_path}`
+      return `https://image.tmdb.org/t/p/w185${tmdbResult.profile_path}`
     }
     return null
   }

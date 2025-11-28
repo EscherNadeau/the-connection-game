@@ -181,10 +181,10 @@
                   <div class="goal-poster" :class="{ 'tutorial-glow': showTutorial && tutorialStep === 9 }">
                     <div class="card-image">
                       <div v-if="mode.id === 'goal' && selectedGoals.goal1" class="card-icon">
-                        <img :src="getImageUrl(selectedGoals.goal1) || ''" :alt="(selectedGoals.goal1?.title || selectedGoals.goal1?.name) || ''" />
+                        <img loading="lazy" decoding="async" :src="getImageUrl(selectedGoals.goal1) || ''" :alt="(selectedGoals.goal1?.title || selectedGoals.goal1?.name) || ''" />
                     </div>
                       <div v-else-if="mode.id === 'knowledge' && selectedGoals.knowledge" class="card-icon">
-                        <img :src="getImageUrl(selectedGoals.knowledge) || ''" :alt="(selectedGoals.knowledge?.name) || 'Starting Item'" />
+                        <img loading="lazy" decoding="async" :src="getImageUrl(selectedGoals.knowledge) || ''" :alt="(selectedGoals.knowledge?.name) || 'Starting Item'" />
                   </div>
                       <div v-else class="card-icon">{{ mode.id === 'goal' ? '🎯' : '🧠' }}</div>
                     </div>
@@ -205,7 +205,7 @@
                   <div v-if="mode.id === 'goal'" class="goal-poster" :class="{ 'tutorial-glow': showTutorial && tutorialStep === 9 }">
                     <div class="card-image">
                       <div v-if="selectedGoals.goal2" class="card-icon">
-                        <img :src="getImageUrl(selectedGoals.goal2) || ''" :alt="(selectedGoals.goal2?.title || selectedGoals.goal2?.name) || ''" />
+                        <img loading="lazy" decoding="async" :src="getImageUrl(selectedGoals.goal2) || ''" :alt="(selectedGoals.goal2?.title || selectedGoals.goal2?.name) || ''" />
                 </div>
                       <div v-else class="card-icon">🎯</div>
               </div>
@@ -501,7 +501,7 @@
                 <div class="goal-poster compact-main">
                   <div class="card-image">
                     <div v-if="selectedGoals.hybridStarting" class="card-icon">
-                      <img :src="getImageUrl(selectedGoals.hybridStarting) || ''" :alt="(selectedGoals.hybridStarting?.name) || 'Starting Item'" />
+                      <img loading="lazy" decoding="async" :src="getImageUrl(selectedGoals.hybridStarting) || ''" :alt="(selectedGoals.hybridStarting?.name) || 'Starting Item'" />
                     </div>
                     <div v-else class="card-icon">🔗</div>
                   </div>

@@ -27,7 +27,7 @@
       💡
     </button>
     <div class="item-image">
-      <img v-if="item.image" :src="item.image" :alt="item.title || item.name" @error="handleImageError" />
+      <img v-if="item.image" :src="item.image" :alt="item.title || item.name" @error="handleImageError" loading="lazy" decoding="async" />
       <div v-else class="item-icon">{{ getItemIcon(item.type) }}</div>
     </div>
     <div class="item-info">

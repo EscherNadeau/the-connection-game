@@ -178,7 +178,7 @@ const performSearch = async () => {
       type: (r.media_type || '').toString().toLowerCase(),
       year: extractYear(r),
       image: r.poster_path || r.profile_path
-        ? `https://image.tmdb.org/t/p/w500${r.poster_path || r.profile_path}`
+        ? `https://image.tmdb.org/t/p/w185${r.poster_path || r.profile_path}`
         : null,
       // Preserve full TMDB data for hint system
       tmdbData: r,

@@ -157,7 +157,7 @@ export default {
       try {
         const od = result && result.originalData ? result.originalData : {}
         const path = od.poster_path || od.profile_path || od.backdrop_path || ''
-        if (path) return `https://image.tmdb.org/t/p/original${path}`
+        if (path) return `https://image.tmdb.org/t/p/w342${path}`
       } catch (err) {
         // Failed to extract image path - return empty string
         debug('Failed to get result image', { error: err })

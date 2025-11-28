@@ -18,7 +18,7 @@
   >
     <div class="goal-image">
       <div class="goal-number">{{ goalNumber }}</div>
-      <img v-if="goal.image" :src="goal.image" :alt="goal.title || goal.description" />
+      <img v-if="goal.image" :src="goal.image" :alt="goal.title || goal.description" loading="lazy" decoding="async" />
       <div v-else class="goal-icon">
         {{
           getResultIcon(goal.type === 'item' ? 'person' : goal.type === 'connection' ? 'movie' : 'tv')
