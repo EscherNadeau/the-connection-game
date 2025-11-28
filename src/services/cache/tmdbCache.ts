@@ -418,15 +418,26 @@ class TMDBCache {
   }
   async searchMulti(query, type = 'multi') {
     const cacheKey = CACHE_KEYS.SEARCH(query, type)
-    return await enhancedCacheService.getOrSet(
-      cacheKey,
-      async () => {
-        info( `Searching for: ${query} (type: ${type})`)
-        const results = await tmdbService.searchMulti(query)
-        return results.map((item) => ({ ...item, last_updated: new Date().toISOString() }))
-      },
-      CACHE_CONFIG.CATEGORIES.SEARCH
-    )
+    
+    // First check if we have cached results
+    const cached = await enhancedCacheService.get(cacheKey, CACHE_CONFIG.CATEGORIES.SEARCH)
+    
+    // If cached results exist and are non-empty, return them
+    if (cached && Array.isArray(cached) && cached.length > 0) {
+      return cached
+    }
+    
+    // If no cache or empty cache, always fetch fresh (don't trust empty cached results)
+    info(`Searching for: ${query} (type: ${type})`)
+    const results = await tmdbService.searchMulti(query)
+    const enhanced = results.map((item) => ({ ...item, last_updated: new Date().toISOString() }))
+    
+    // Only cache if we got results (don't cache empty results)
+    if (enhanced.length > 0) {
+      await enhancedCacheService.set(cacheKey, enhanced, CACHE_CONFIG.CATEGORIES.SEARCH)
+    }
+    
+    return enhanced
   }
   async findConnections(item1, item2) {
     try {
@@ -554,6 +565,17 @@ class TMDBCache {
       return true
     } catch (e) {
       logError( `Failed to refresh cache: ${e.message}`)
+      return false
+    }
+  }
+  async clearSearchCache() {
+    info("Clearing all search cache entries...")
+    try {
+      await enhancedCacheService.clear(CACHE_CONFIG.CATEGORIES.SEARCH)
+      info("Search cache cleared successfully")
+      return true
+    } catch (e) {
+      logError("Failed to clear search cache: " + e.message)
       return false
     }
   }
