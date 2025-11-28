@@ -1,5 +1,18 @@
 /// <reference types="vite/client" />
 
+// Environment variable types
+interface ImportMetaEnv {
+  readonly VITE_TMDB_API_KEY: string
+  readonly VITE_WS_SERVER_URL: string
+  readonly VITE_SNAPSHOT_SERVER_URL: string
+  readonly VITE_SUPABASE_URL: string
+  readonly VITE_SUPABASE_ANON_KEY: string
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
+
 declare module '*.vue' {
   import type { DefineComponent } from 'vue'
   const component: DefineComponent<{}, {}, any>

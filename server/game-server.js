@@ -6,8 +6,24 @@ const express = require('express')
 const cors = require('cors')
 const os = require('os')
 const { WebSocketServer } = require('ws')
+const { 
+  RateLimiter, 
+  validateMessage, 
+  validateSnapshotData,
+  isValidRoomCode,
+  sanitizeString 
+} = require('./security')
 
 const PORT = process.env.PORT || 3011
+
+// Initialize rate limiter: 100 messages per minute per client
+const rateLimiter = new RateLimiter({ 
+  windowMs: 60000, 
+  maxRequests: 100 
+})
+
+// Clean up rate limiter every 5 minutes
+setInterval(() => rateLimiter.cleanup(), 5 * 60 * 1000).unref()
 
 // Express app for snapshot API
 const app = express()
@@ -40,24 +56,26 @@ function genCode() {
   return code
 }
 
-function isValidRoomCode(code) {
-  if (!code || typeof code !== 'string') return false
-  const cleanCode = code.toUpperCase().trim()
-  if (cleanCode.length !== 4) return false
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  return cleanCode.split('').every(char => alphabet.includes(char))
-}
+// isValidRoomCode is now imported from security.js
 
 // Snapshot endpoints
 app.post('/api/snapshots', (req, res) => {
   try {
     const data = req.body && req.body.data
     if (!data) return res.status(400).json({ error: 'Missing data' })
+    
+    // Validate snapshot data
+    const validation = validateSnapshotData(data)
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error })
+    }
+    
     let code = genCode(), safety = 0
     while (snapshots.has(code) && safety++ < 10) code = genCode()
     snapshots.set(code, { ts: Date.now(), data })
     res.json({ code })
   } catch (e) {
+    console.error('[snapshot] Error:', e.message)
     res.status(500).json({ error: 'Server error' })
   }
 })
@@ -232,9 +250,32 @@ wss.on('connection', (ws, req) => {
     try { ws.send(JSON.stringify({ type: 'action', payload: { kind: 'prompt', text: rp.text } })) } catch {}
   }
 
-  ws.on('message', (data) => {
+  ws.on('message', (rawData) => {
+    // Rate limiting check
+    const rateCheck = rateLimiter.check(ws.__id)
+    if (!rateCheck.allowed) {
+      console.log(`⚠️ Rate limited client ${ws.__id} in room ${roomKey}`)
+      try {
+        ws.send(JSON.stringify({ 
+          type: 'error', 
+          payload: { 
+            message: 'Too many messages. Please slow down.',
+            retryAfter: Math.ceil(rateCheck.resetIn / 1000)
+          }
+        }))
+      } catch {}
+      return
+    }
+
+    // Validate and sanitize message
+    const validation = validateMessage(String(rawData))
+    if (!validation.valid) {
+      console.log(`❌ Invalid message from ${ws.__id}: ${validation.error}`)
+      return
+    }
+
+    const msg = validation.message
     try {
-      const msg = JSON.parse(String(data))
       if (msg && msg.type === 'ping') {
         return
       }
@@ -242,7 +283,7 @@ wss.on('connection', (ws, req) => {
       if (msg && msg.type === 'action' && msg.payload && msg.payload.kind === 'profile') {
         console.log(`[profile] recv`, { room: roomKey, from: ws.__id, payload: msg.payload })
         const rawName = (msg.payload && msg.payload.name) ? String(msg.payload.name) : ''
-        const label = rawName.trim().slice(0, 20)
+        const label = sanitizeString(rawName, 20)
         const reqColor = (msg.payload && msg.payload.color) ? String(msg.payload.color) : ''
         let color = reqColor
         // enforce unique color within room; if taken, pick next available
@@ -255,7 +296,7 @@ wss.on('connection', (ws, req) => {
         }
         if (label) ws.__label = label
         if (color) ws.__color = color
-        if (msg.payload.answer) ws.__answerTitle = String(msg.payload.answer).slice(0, 60)
+        if (msg.payload.answer) ws.__answerTitle = sanitizeString(msg.payload.answer, 60)
         ws.__ready = true
         console.log(`[profile] applied`, { room: roomKey, id: ws.__id, name: ws.__label || '', answer: ws.__answerTitle || '', requestedColor: reqColor, assignedColor: ws.__color, usedColors: Array.from(usedColors) })
         
@@ -330,8 +371,8 @@ wss.on('connection', (ws, req) => {
       // Handle controller answer (set image/title for waiting room display)
       if (msg && msg.type === 'action' && msg.payload && msg.payload.kind === 'answer') {
         try {
-          const image = typeof msg.payload.image === 'string' ? msg.payload.image : ''
-          const title = typeof msg.payload.title === 'string' ? msg.payload.title.slice(0, 60) : ''
+          const image = typeof msg.payload.image === 'string' ? sanitizeString(msg.payload.image, 500) : ''
+          const title = typeof msg.payload.title === 'string' ? sanitizeString(msg.payload.title, 60) : ''
           if (image) ws.__image = image
           if (title) ws.__answerTitle = title
           ws.__ready = true
@@ -453,6 +494,9 @@ wss.on('connection', (ws, req) => {
   })
 
   ws.on('close', () => {
+    // Clean up rate limiter for this client
+    rateLimiter.reset(ws.__id)
+    
     const peers = roomToClients.get(roomKey)
     if (peers) {
       peers.delete(ws)

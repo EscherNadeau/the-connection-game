@@ -6,7 +6,8 @@
   "private": true,
   "type": "commonjs",
   "dependencies": {
-    "ws": "^8.17.0"
+    "ws": "^8.17.0",
+    "zod": "^4.1.13"
   },
   "scripts": {
     "start": "node collab-server.js"

@@ -64,7 +64,7 @@ async function performSearch(): Promise<void> {
     searchResults.value = []
     return
   }
-  info( '🔍 Starting search in GameScreen:', searchQuery.value)
+  info('🔍 Starting search in GameScreen:', searchQuery.value)
   isSearching.value = true
   try {
     const filtersStore = useFiltersStore()
@@ -96,9 +96,9 @@ async function performSearch(): Promise<void> {
         })
       }
       searchResults.value = results.slice(0, 8)
-      info( `✅ Search completed: ${searchResults.value.length} results`)
+      info(`✅ Search completed: ${searchResults.value.length} results`)
     } else {
-      logError( '❌ Search failed:', searchResult.error)
+      logError('❌ Search failed:', searchResult.error)
       searchResults.value = []
     }
   } catch (error: any) {
@@ -235,3 +235,26 @@ defineExpose({
   onHintRequested
 })
 </script>
+
+<style scoped>
+/* Position search panel at bottom of screen */
+:deep(.search-container) {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 99999;
+  padding: 0;
+}
+
+:deep(.search-input) {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+}
+
+:deep(.search-results) {
+  z-index: 100000;
+}
+</style>

@@ -72,16 +72,21 @@ const isSearching: Ref<boolean> = ref(false)
 const searchTimeout: Ref<ReturnType<typeof setTimeout> | null> = ref(null)
 const searchInput: Ref<HTMLInputElement | null> = ref(null)
 
+// Check if results are externally controlled
+const isControlled = computed(() => {
+  return props.results !== null && props.results !== undefined
+})
+
 // Computed properties
 const shouldShowResults = computed(() => {
-  // Use external results if provided (for hints), otherwise use internal search results
-  const results = props.results || searchResults.value
-  return results && results.length > 0
+  // Use external results if provided, otherwise use internal search results
+  const results = isControlled.value ? props.results : searchResults.value
+  return results && Array.isArray(results) && results.length > 0
 })
 
 const displayResults = computed(() => {
   // Return the results to display (external or internal)
-  return props.results || searchResults.value
+  return isControlled.value ? props.results : searchResults.value
 })
 
 // Watchers
@@ -124,6 +129,11 @@ defineExpose({ focusInput })
 const handleSearchInput = () => {
   emit('update:modelValue', searchQuery.value)
   
+  // If externally controlled, don't manage internal search state
+  if (isControlled.value) {
+    return
+  }
+  
   // Clear previous timeout
   if (searchTimeout.value) {
     clearTimeout(searchTimeout.value)
@@ -135,7 +145,7 @@ const handleSearchInput = () => {
     return
   }
 
-  // Debounce search
+  // Debounce search (only when not externally controlled)
   searchTimeout.value = setTimeout(() => {
     performSearch()
   }, 300)
@@ -213,7 +223,10 @@ const selectResult = (result: SearchResult) => {
 
 const clearSearch = () => {
   searchQuery.value = ''
-  searchResults.value = []
+  // Only clear internal results if not externally controlled
+  if (!isControlled.value) {
+    searchResults.value = []
+  }
   emit('update:modelValue', '')
   emit('clear')
 }
@@ -328,7 +341,7 @@ const getMockResults = (): SearchResult[] => {
   border-bottom: none;
   max-height: 400px;
   overflow-y: auto;
-  z-index: 10000;
+  z-index: 100000;
   border-radius: 8px 8px 0 0;
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
 }

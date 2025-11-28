@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import pinia from '@store/pinia.ts'
 import { useFiltersStore } from '@store/filters.store.ts'
 import { useGameStateStore } from '@store/gameState.store.ts'
+import { useAuthStore } from '@store/auth.store.ts'
 import App from './App.vue'
 
 // Import all services for global debugging access
@@ -21,6 +22,8 @@ import gameSettingsService from '@services/GameSettingsService.ts'
 import uiService from '@services/ui/UIService.ts'
 import utilityService from '@utils/utility.ts'
 import { debug, warn, error as logError } from './services/ui/log.ts'
+import { setupGlobalErrorHandlers, errorHandler } from './services/errors'
+import NotifyService from './services/ui/NotifyService.ts'
 import './assets/styles/theme.css'
 
 // Initialize UI service (sets theme and listeners)
@@ -34,6 +37,12 @@ try {
 // Create Pinia stores once (usable in dev globals and debug object)
 const filtersStore = useFiltersStore(pinia)
 const gameStateStore = useGameStateStore(pinia)
+const authStore = useAuthStore(pinia)
+
+// Initialize auth store (checks for existing session)
+authStore.initialize().catch((err) => {
+  debug('Auth store initialization failed', { error: err })
+})
 
 // Make services globally available for debugging (dev only)
 if (import.meta.env && import.meta.env.DEV) {
@@ -82,8 +91,37 @@ if (import.meta.env && import.meta.env.DEV) {
     stores: {
       filters: filtersStore,
       gameState: gameStateStore,
+      auth: authStore,
     },
   }
 }
 
-createApp(App).use(pinia).mount('#app')
+// Create and configure Vue app
+const app = createApp(App)
+
+// Setup global error handlers
+setupGlobalErrorHandlers(app, {
+  onUnhandledError: (error) => {
+    debug('Unhandled error captured', { 
+      code: error.code, 
+      message: error.message,
+      severity: error.severity 
+    })
+  },
+  showNotification: (message, type) => {
+    try {
+      NotifyService.show(message, type === 'error' ? 'error' : 'warning')
+    } catch (err) {
+      // Notification service not ready - log instead
+      debug('Could not show notification', { message, type, error: err })
+    }
+  }
+})
+
+// Make error handler available in dev mode
+if (import.meta.env && import.meta.env.DEV) {
+  window.errorHandler = errorHandler
+}
+
+// Mount the app
+app.use(pinia).mount('#app')

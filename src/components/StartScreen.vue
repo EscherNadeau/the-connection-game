@@ -1,5 +1,13 @@
 <template>
   <div class="container">
+    <!-- Auth Button in top right -->
+    <div class="auth-corner">
+      <UserMenu @open-auth="showAuthModal = true" />
+    </div>
+
+    <!-- Auth Modal -->
+    <AuthModal :is-open="showAuthModal" @close="showAuthModal = false" @authenticated="onAuthenticated" />
+
     <!-- Header with title -->
     <div class="header">
       <div class="title-wrap">
@@ -352,7 +360,8 @@ Next
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import type { StartScreenProps, StartScreenEmits } from '../types/game'
-
+import UserMenu from './auth/UserMenu.vue'
+import AuthModal from './auth/AuthModal.vue'
 import { info, debug } from '../services/ui/log.ts'
 
 const props = withDefaults(defineProps<StartScreenProps>(), {
@@ -370,6 +379,12 @@ const selectedPlayMode = ref('Multiplayer')
 const showJoinMenu = ref(false)
 const showPlaylistMenu = ref(false)
 const joinCode = ref('')
+const showAuthModal = ref(false)
+
+// Auth callback
+const onAuthenticated = () => {
+  info('User authenticated successfully')
+}
 
 // Toggle play menu
 const togglePlayMenu = () => {
@@ -622,6 +637,21 @@ onUnmounted(() => {
     overflow: visible;
     font-family: 'Courier New', 'Monaco', 'Menlo', 'Consolas', monospace;
     z-index: 1;
+}
+
+/* Auth Corner */
+.auth-corner {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 500;
+}
+
+@media (max-width: 768px) {
+    .auth-corner {
+        top: 16px;
+        right: 16px;
+    }
 }
 
 .container::before {

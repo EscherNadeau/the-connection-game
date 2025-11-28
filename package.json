@@ -14,7 +14,11 @@
     "lint": "eslint \"src/**/*.{js,ts,vue}\"",
     "lint:fix": "eslint \"src/**/*.{js,ts,vue}\" --fix",
     "type-check": "vue-tsc --noEmit",
-    "format": "prettier --write \"**/*.{js,ts,vue,json,md}\""
+    "format": "prettier --write \"**/*.{js,ts,vue,json,md}\"",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
   },
   "lint-staged": {
     "*.{js,ts,vue,json,md}": [
@@ -23,6 +27,7 @@
     ]
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.86.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "jszip": "^3.10.1",
@@ -33,16 +38,20 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.2.3",
+    "@vitest/coverage-v8": "^4.0.14",
     "@vue/eslint-config-prettier": "^9.0.0",
+    "@vue/test-utils": "^2.4.6",
     "@vue/tsconfig": "^0.8.1",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.2",
     "eslint-import-resolver-alias": "^1.1.2",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-vue": "^9.33.0",
+    "happy-dom": "^20.0.11",
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
     "vite": "^4.4.5",
+    "vitest": "^4.0.14",
     "vue-tsc": "^3.1.1"
   }
 }
