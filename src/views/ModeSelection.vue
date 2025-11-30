@@ -221,15 +221,17 @@ export default {
       }
       
       if (props.showTutorial && props.tutorialStep === 7.6 && mode.id === 'goal') {
+        // Tutorial step 7.6: Click Goal Mode to continue - advance AND select
         nextTutorialStep()
+        emit('mode-selected', mode)
       } else if (props.showTutorial && props.tutorialStep !== 7.6) {
-        // Don't select mode during tutorial unless it's the right step
+        // During other tutorial steps, don't allow mode selection
         return
       } else {
+        // Normal mode selection
         emit('mode-selected', mode)
       }
     }
-
     const nextTutorialStep = () => {
       emit('tutorial-next')
     }
