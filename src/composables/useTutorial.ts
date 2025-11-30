@@ -8,31 +8,21 @@ export function useTutorial() {
   const tutorialStep: Ref<number> = ref(0)
   const tutorialJustCompleted: Ref<boolean> = ref(false)
 
-  /**
-   * Start the tutorial from the beginning
-   */
   function startTutorial(): void {
     showTutorial.value = true
     tutorialStep.value = 0
   }
 
-  /**
-   * Start tutorial from "How to Play" overlay
-   */
   function startTutorialFromHowToPlay(): void {
     showTutorial.value = true
-    tutorialStep.value = 2 // Start at the Play Game step
+    tutorialStep.value = 2
   }
 
-  /**
-   * Advance to the next tutorial step
-   */
   function nextTutorialStep(): void {
     if (tutorialStep.value === 0) {
       tutorialStep.value = 1
     } else if (tutorialStep.value === 5) {
-      // Don't auto-advance - wait for user to click Play Game or Shows
-      return
+      return // Wait for user action
     } else if (tutorialStep.value === 5.1) {
       tutorialStep.value = 7
     } else if (tutorialStep.value === 5.2) {
@@ -73,18 +63,22 @@ export function useTutorial() {
       tutorialStep.value = 6.1
     } else if (tutorialStep.value === 6.1) {
       tutorialStep.value = 7
+    // Mode Selection steps (updated for new layout)
     } else if (tutorialStep.value === 7) {
-      tutorialStep.value = 7.1
+      tutorialStep.value = 7.1  // Goal Mode explanation
     } else if (tutorialStep.value === 7.1) {
-      tutorialStep.value = 7.2
-    } else if (tutorialStep.value === 7.2) {
-      tutorialStep.value = 7.3
-    } else if (tutorialStep.value === 7.3) {
-      tutorialStep.value = 7.4
-    } else if (tutorialStep.value === 7.4) {
-      tutorialStep.value = 7.5
+      tutorialStep.value = 7.5  // Skip to Zen Mode (skip old 7.2-7.4)
     } else if (tutorialStep.value === 7.5) {
-      tutorialStep.value = 7.6
+      tutorialStep.value = 7.7  // Oddities button
+    } else if (tutorialStep.value === 7.7) {
+      tutorialStep.value = 7.8  // Knowledge Mode (after clicking Oddities)
+    } else if (tutorialStep.value === 7.8) {
+      tutorialStep.value = 7.9  // Anti Mode
+    } else if (tutorialStep.value === 7.9) {
+      tutorialStep.value = 7.6  // Ready to click Goal Mode
+    } else if (tutorialStep.value === 7.6) {
+      tutorialStep.value = 8    // Continue to settings
+    // Settings steps
     } else if (tutorialStep.value === 8) {
       tutorialStep.value = 9
     } else if (tutorialStep.value === 9) {
@@ -122,8 +116,7 @@ export function useTutorial() {
     } else if (tutorialStep.value === 19.55) {
       tutorialStep.value = 19.6
     } else if (tutorialStep.value === 19.6) {
-      // Wait for user to press start - don't auto-advance
-      return
+      return // Wait for user to press start
     } else if (tutorialStep.value === 20) {
       tutorialStep.value = 21
     } else if (tutorialStep.value === 21) {
@@ -147,7 +140,6 @@ export function useTutorial() {
     } else if (tutorialStep.value === 28) {
       tutorialStep.value = 29
     } else if (tutorialStep.value === 29) {
-      // End tutorial after win screen
       showTutorial.value = false
       tutorialStep.value = 0
       tutorialJustCompleted.value = true
@@ -156,18 +148,12 @@ export function useTutorial() {
     }
   }
 
-  /**
-   * Set tutorial step to a specific value
-   */
   function setTutorialStep(step: number): void {
     debug('setTutorialStep called', { step, currentStep: tutorialStep.value })
     tutorialStep.value = step
     debug('tutorialStep set', { step: tutorialStep.value })
   }
 
-  /**
-   * Jump to a specific tutorial step (used for navigation)
-   */
   function jumpToTutorialStep(step: number, currentView?: Ref<ViewName>): void {
     tutorialStep.value = step
     if (step === 20 && currentView) {
@@ -175,16 +161,10 @@ export function useTutorial() {
     }
   }
 
-  /**
-   * Mark tutorial as completed
-   */
   function markTutorialCompleted(): void {
     tutorialJustCompleted.value = true
   }
 
-  /**
-   * Reset tutorial state (when going back to start)
-   */
   function resetTutorial(): void {
     showTutorial.value = false
     tutorialStep.value = 0
@@ -203,4 +183,3 @@ export function useTutorial() {
     resetTutorial,
   }
 }
-
