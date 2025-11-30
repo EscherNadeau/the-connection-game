@@ -35,6 +35,7 @@ export interface Connection {
   description?: string
   fromItem?: GameItem
   toItem?: GameItem
+  characterName?: string // Character played by actor in the movie/show
 }
 
 export interface SearchResult {

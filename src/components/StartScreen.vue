@@ -5,6 +5,8 @@
       <UserMenu 
         @open-auth="showAuthModal = true" 
         @open-profile="showProfile = true"
+        @open-leaderboard="showLeaderboard = true"
+        @open-friends="showFriends = true"
       />
     </div>
 
@@ -16,6 +18,19 @@
       v-if="showProfile" 
       @close="showProfile = false" 
       @open-auth="showProfile = false; showAuthModal = true"
+    />
+
+    <!-- Leaderboard Panel -->
+    <LeaderboardPanel 
+      v-if="showLeaderboard" 
+      @close="showLeaderboard = false"
+    />
+
+    <!-- Friends Panel -->
+    <FriendsPanel 
+      v-if="showFriends" 
+      @close="showFriends = false"
+      @invite="handleFriendInvite"
     />
 
     <!-- Header with title -->
@@ -373,6 +388,8 @@ import type { StartScreenProps, StartScreenEmits } from '../types/game'
 import UserMenu from './auth/UserMenu.vue'
 import AuthModal from './auth/AuthModal.vue'
 import ProfilePanel from './profile/ProfilePanel.vue'
+import LeaderboardPanel from './leaderboard/LeaderboardPanel.vue'
+import FriendsPanel from './friends/FriendsPanel.vue'
 import { info, debug } from '../services/ui/log.ts'
 
 const props = withDefaults(defineProps<StartScreenProps>(), {
@@ -392,10 +409,21 @@ const showPlaylistMenu = ref(false)
 const joinCode = ref('')
 const showAuthModal = ref(false)
 const showProfile = ref(false)
+const showLeaderboard = ref(false)
+const showFriends = ref(false)
 
 // Auth callback
 const onAuthenticated = () => {
   info('User authenticated successfully')
+}
+
+// Friend invite callback
+const handleFriendInvite = (friendId: string) => {
+  info(`Invite friend: ${friendId}`)
+  showFriends.value = false
+  // TODO: Create a game and send invite to friend
+  // For now, just start a multiplayer game
+  emit('start-game', { action: 'create', mode: 'multiplayer' })
 }
 
 // Toggle play menu

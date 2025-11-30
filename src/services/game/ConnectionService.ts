@@ -72,6 +72,67 @@ class ConnectionService {
   }
 
   /**
+   * Get character name for a person-media connection
+   * @param personItem - Person item
+   * @param mediaItem - Media item (movie/tv)
+   * @returns Character name or null
+   */
+  async getCharacterName(personItem: GameItem, mediaItem: GameItem): Promise<string | null> {
+    try {
+      const personId = personItem.tmdbData?.id || personItem.tmdbId
+      const mediaId = mediaItem.tmdbData?.id || mediaItem.tmdbId
+      const mediaType = normalizeMediaType(mediaItem.type)
+
+      if (!personId || !mediaId) return null
+
+      // Try to get from movie cast
+      if (mediaType === 'movie') {
+        const movieData = await tmdbCache.getMovieWithCastCached(mediaId) || 
+                          await tmdbCache.getMovieWithCast(mediaId)
+        if (movieData?.cast) {
+          const castMember = movieData.cast.find((c: { id: number; character?: string }) => 
+            String(c.id) === String(personId)
+          )
+          if (castMember?.character) {
+            return castMember.character
+          }
+        }
+      } 
+      // Try to get from TV cast
+      else if (mediaType === 'tv') {
+        const tvData = await tmdbCache.getTVShowWithCastCached(mediaId) || 
+                       await tmdbCache.getTVShowWithCast(mediaId)
+        if (tvData?.cast) {
+          const castMember = tvData.cast.find((c: { id: number; character?: string }) => 
+            String(c.id) === String(personId)
+          )
+          if (castMember?.character) {
+            return castMember.character
+          }
+        }
+      }
+
+      // Fallback: check person's filmography
+      const actorData = await tmdbCache.getActorWithFilmographyCached(personId) ||
+                        await tmdbCache.getActorWithFilmography(personId, false)
+      if (actorData?.filmography) {
+        const credit = actorData.filmography.find(
+          (cr: { id: number; media_type: string; character?: string }) => 
+            String(cr.id) === String(mediaId) && normalizeMediaType(cr.media_type) === mediaType
+        )
+        if (credit?.character) {
+          return credit.character
+        }
+      }
+
+      return null
+    } catch (err) {
+      debug('Failed to get character name', { error: err })
+      return null
+    }
+  }
+
+  /**
    * Check if two items are related using TMDB data
    * @param item1 - First game item
    * @param item2 - Second game item

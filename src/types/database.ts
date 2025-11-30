@@ -347,3 +347,30 @@ export type LeaderboardInsert = Tables['leaderboard']['Insert']
 export type GameHistoryRow = Tables['game_history']['Row']
 export type GameHistoryInsert = Tables['game_history']['Insert']
 
+// Friendship types
+export type FriendshipStatus = 'pending' | 'accepted' | 'blocked'
+
+export interface FriendRow {
+  id: string
+  requester_id: string
+  addressee_id: string
+  status: FriendshipStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface FriendInsert {
+  requester_id: string
+  addressee_id: string
+  status?: FriendshipStatus
+}
+
+export interface FriendWithUser extends FriendRow {
+  friend: {
+    id: string
+    username: string | null
+    display_name: string | null
+    avatar_url: string | null
+  }
+}
+

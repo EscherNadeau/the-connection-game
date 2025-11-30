@@ -5,19 +5,40 @@
     style="overflow: visible"
   >
     <!-- Connection lines - simplified for performance -->
-    <line
-      v-for="connection in connections"
-      :key="connection.id"
-      :x1="connection.fromItem ? connection.fromItem.x : 0"
-      :y1="connection.fromItem ? connection.fromItem.y : 0"
-      :x2="connection.toItem ? connection.toItem.x : 0"
-      :y2="connection.toItem ? connection.toItem.y : 0"
-      :stroke="getConnectionColor(connection)"
-      :stroke-width="isOnPath(connection) ? 4 : 2.5"
-      :opacity="getConnectionOpacity(connection)"
-      stroke-linecap="round"
-      class="connection-line"
-    />
+    <g v-for="connection in connections" :key="connection.id">
+      <line
+        :x1="connection.fromItem ? connection.fromItem.x : 0"
+        :y1="connection.fromItem ? connection.fromItem.y : 0"
+        :x2="connection.toItem ? connection.toItem.x : 0"
+        :y2="connection.toItem ? connection.toItem.y : 0"
+        :stroke="getConnectionColor(connection)"
+        :stroke-width="isOnPath(connection) ? 4 : 2.5"
+        :opacity="getConnectionOpacity(connection)"
+        stroke-linecap="round"
+        class="connection-line"
+      />
+      <!-- Character name label -->
+      <g v-if="connection.characterName" class="character-label-group">
+        <rect
+          :x="getMidX(connection) - getTextWidth(connection.characterName) / 2 - 6"
+          :y="getMidY(connection) - 10"
+          :width="getTextWidth(connection.characterName) + 12"
+          height="20"
+          rx="4"
+          fill="rgba(0, 0, 0, 0.75)"
+          :opacity="getConnectionOpacity(connection)"
+        />
+        <text
+          :x="getMidX(connection)"
+          :y="getMidY(connection) + 4"
+          text-anchor="middle"
+          class="character-name"
+          :opacity="getConnectionOpacity(connection)"
+        >
+          {{ truncateCharacter(connection.characterName) }}
+        </text>
+      </g>
+    </g>
   </svg>
 </template>
 
@@ -62,6 +83,30 @@ function getConnectionOpacity(connection: Connection): number {
   if (hasPathHighlight) return 0.15
   return 0.5
 }
+
+function getMidX(connection: Connection): number {
+  const x1 = connection.fromItem?.x || 0
+  const x2 = connection.toItem?.x || 0
+  return (x1 + x2) / 2
+}
+
+function getMidY(connection: Connection): number {
+  const y1 = connection.fromItem?.y || 0
+  const y2 = connection.toItem?.y || 0
+  return (y1 + y2) / 2
+}
+
+function getTextWidth(text: string): number {
+  // Approximate character width for the font
+  return Math.min(text.length * 7, 120)
+}
+
+function truncateCharacter(name: string): string {
+  if (name.length > 18) {
+    return name.slice(0, 16) + '…'
+  }
+  return name
+}
 </script>
 
 <style scoped>
@@ -78,5 +123,18 @@ function getConnectionOpacity(connection: Connection): number {
 
 .connection-line {
   /* No transitions or animations for performance */
+}
+
+.character-name {
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+  fill: #4ecdc4;
+  font-weight: 600;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.character-label-group {
+  pointer-events: none;
 }
 </style>

@@ -853,6 +853,162 @@ class DatabaseService {
       return { data: null, error: 'An unexpected error occurred' }
     }
   }
+
+  // ==================== GLOBAL LEADERBOARD OPERATIONS ====================
+
+  /**
+   * Get top players by games won
+   */
+  async getTopPlayersByWins(limit = 10): Promise<ListResult<{
+    userId: string
+    username: string | null
+    displayName: string | null
+    avatarUrl: string | null
+    totalWins: number
+    totalGamesPlayed: number
+  }>> {
+    const client = getSupabaseClient()
+    if (!client) {
+      return { data: [], error: 'Database not available' }
+    }
+
+    try {
+      const { data, error } = await client
+        .from('users')
+        .select('id, username, display_name, avatar_url, total_wins, total_games_played')
+        .gt('total_wins', 0)
+        .order('total_wins', { ascending: false })
+        .limit(limit)
+
+      if (error) {
+        warn('DatabaseService: Failed to get top players by wins', { error })
+        return { data: [], error: error.message }
+      }
+
+      const entries = (data || []).map((row: Record<string, unknown>) => ({
+        userId: row.id as string,
+        username: row.username as string | null,
+        displayName: row.display_name as string | null,
+        avatarUrl: row.avatar_url as string | null,
+        totalWins: row.total_wins as number,
+        totalGamesPlayed: row.total_games_played as number,
+      }))
+
+      return { data: entries, error: null }
+    } catch (err) {
+      logError('DatabaseService: Get top players by wins error', { error: err })
+      return { data: [], error: 'An unexpected error occurred' }
+    }
+  }
+
+  /**
+   * Get top players by games played
+   */
+  async getTopPlayersByGamesPlayed(limit = 10): Promise<ListResult<{
+    userId: string
+    username: string | null
+    displayName: string | null
+    avatarUrl: string | null
+    totalGamesPlayed: number
+    totalWins: number
+  }>> {
+    const client = getSupabaseClient()
+    if (!client) {
+      return { data: [], error: 'Database not available' }
+    }
+
+    try {
+      const { data, error } = await client
+        .from('users')
+        .select('id, username, display_name, avatar_url, total_games_played, total_wins')
+        .gt('total_games_played', 0)
+        .order('total_games_played', { ascending: false })
+        .limit(limit)
+
+      if (error) {
+        warn('DatabaseService: Failed to get top players by games', { error })
+        return { data: [], error: error.message }
+      }
+
+      const entries = (data || []).map((row: Record<string, unknown>) => ({
+        userId: row.id as string,
+        username: row.username as string | null,
+        displayName: row.display_name as string | null,
+        avatarUrl: row.avatar_url as string | null,
+        totalGamesPlayed: row.total_games_played as number,
+        totalWins: row.total_wins as number,
+      }))
+
+      return { data: entries, error: null }
+    } catch (err) {
+      logError('DatabaseService: Get top players by games error', { error: err })
+      return { data: [], error: 'An unexpected error occurred' }
+    }
+  }
+
+  /**
+   * Get top players by total connections made
+   */
+  async getTopPlayersByConnections(limit = 10): Promise<ListResult<{
+    userId: string
+    username: string | null
+    displayName: string | null
+    avatarUrl: string | null
+    totalConnections: number
+  }>> {
+    const client = getSupabaseClient()
+    if (!client) {
+      return { data: [], error: 'Database not available' }
+    }
+
+    try {
+      // Sum connections from game_history for each user
+      const { data, error } = await client
+        .from('game_history')
+        .select('user_id, connections_made, users!inner(username, display_name, avatar_url)')
+        
+      if (error) {
+        warn('DatabaseService: Failed to get connections data', { error })
+        return { data: [], error: error.message }
+      }
+
+      // Aggregate by user
+      const userConnections: Record<string, {
+        userId: string
+        username: string | null
+        displayName: string | null
+        avatarUrl: string | null
+        totalConnections: number
+      }> = {}
+
+      for (const row of (data || [])) {
+        const userId = row.user_id as string
+        const connections = (row.connections_made as number) || 0
+        const users = row.users as Record<string, unknown>
+
+        if (!userConnections[userId]) {
+          userConnections[userId] = {
+            userId,
+            username: users?.username as string | null,
+            displayName: users?.display_name as string | null,
+            avatarUrl: users?.avatar_url as string | null,
+            totalConnections: 0,
+          }
+        }
+        userConnections[userId].totalConnections += connections
+      }
+
+      // Sort and limit
+      const entries = Object.values(userConnections)
+        .sort((a, b) => b.totalConnections - a.totalConnections)
+        .slice(0, limit)
+
+      return { data: entries, error: null }
+    } catch (err) {
+      logError('DatabaseService: Get top players by connections error', { error: err })
+      return { data: [], error: 'An unexpected error occurred' }
+    }
+  }
 }
 
 // Export singleton instance

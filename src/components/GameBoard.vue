@@ -419,7 +419,25 @@ function getSpawnPosition(): { x: number, y: number } {
   }
 }
 
-function createConnection(from: GameItemType, to: GameItemType): void {
+async function createConnection(from: GameItemType, to: GameItemType): Promise<void> {
+  // Determine which is the person and which is the media for character lookup
+  const isPerson1 = from.type === 'person'
+  const personItem = isPerson1 ? from : to
+  const mediaItem = isPerson1 ? to : from
+  
+  // Try to get character name
+  let characterName: string | undefined
+  if ((personItem.type === 'person') && (mediaItem.type === 'movie' || mediaItem.type === 'tv')) {
+    try {
+      const character = await connectionService.getCharacterName(personItem, mediaItem)
+      if (character) {
+        characterName = character
+      }
+    } catch (err) {
+      // Character name is optional, continue without it
+    }
+  }
+  
   const connection: Connection = {
     id: `conn-${Date.now()}`,
     from: from.id,
@@ -427,6 +445,7 @@ function createConnection(from: GameItemType, to: GameItemType): void {
     fromItem: from, // Add the actual item objects
     toItem: to,     // Add the actual item objects
     type: 'custom',
+    characterName,
   }
   
   connections.value.push(connection)
