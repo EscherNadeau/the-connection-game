@@ -12,6 +12,7 @@
         </div>
         
         <div class="tutorial-steps">
+          <!-- Step 1: The Concept -->
           <div class="tutorial-step" :class="{ 'active': currentStep === 1 }">
             <div class="step-number">1</div>
             <div class="step-content">
@@ -20,45 +21,66 @@
             </div>
           </div>
           
+          <!-- Step 2: Main Modes -->
           <div class="tutorial-step" :class="{ 'active': currentStep === 2 }">
             <div class="step-number">2</div>
             <div class="step-content">
-              <h3>Choose Your Mode</h3>
-              <p><strong>🎯 Goal Mode:</strong> Connect item A to item B<br>
-              <strong>🧘 Zen Mode:</strong> Free exploration, no pressure<br>
-              <strong>📺 Show Builder:</strong> Create themed challenges<br>
-              <strong>🎲 Oddities:</strong> Special modes like Knowledge & Anti</p>
+              <h3>Main Game Modes</h3>
+              <p><strong>🎯 Goal Mode:</strong> Connect item A to item B - find the path!<br>
+              <strong>🧘 Zen Mode:</strong> Free exploration, no timer, no pressure<br>
+              <strong>📺 Show Builder:</strong> Create themed challenge collections</p>
             </div>
           </div>
           
+          <!-- Step 3: Oddities Intro -->
           <div class="tutorial-step" :class="{ 'active': currentStep === 3 }">
             <div class="step-number">3</div>
+            <div class="step-content">
+              <h3>🎲 Oddities - Special Modes</h3>
+              <p>Click the <strong>Oddities</strong> button to reveal special game modes with unique twists!</p>
+            </div>
+          </div>
+          
+          <!-- Step 4: Knowledge Mode -->
+          <div class="tutorial-step" :class="{ 'active': currentStep === 4 }">
+            <div class="step-number">4</div>
+            <div class="step-content">
+              <h3>🧠 Knowledge Mode</h3>
+              <p>Pick an actor and name every movie they're in! Or pick a movie and name the entire cast! Test how much you really know about Hollywood.</p>
+            </div>
+          </div>
+          
+          <!-- Step 5: Anti Mode -->
+          <div class="tutorial-step" :class="{ 'active': currentStep === 5 }">
+            <div class="step-number">5</div>
+            <div class="step-content">
+              <h3>🚫 Anti Mode</h3>
+              <p>The opposite challenge! Find the most obscure items that DON'T connect to each other. Think outside the box - avoid the obvious links!</p>
+            </div>
+          </div>
+          
+          <!-- Step 6: Play Types -->
+          <div class="tutorial-step" :class="{ 'active': currentStep === 6 }">
+            <div class="step-number">6</div>
             <div class="step-content">
               <h3>Choose How to Play</h3>
               <p><strong>🎮 Solo:</strong> Play by yourself<br>
               <strong>⚔️ PvP:</strong> Competitive play<br>
               <strong>👥 Multiplayer:</strong> Collaborative play<br>
               <strong>🛋️ Couch:</strong> TV + phone controllers</p>
-              <button class="interactive-button" @click="clickPlayGame">Start Playing!</button>
             </div>
           </div>
           
-          <div class="tutorial-step" :class="{ 'active': currentStep === 4 }">
-            <div class="step-number">4</div>
-            <div class="step-content">
-              <h3>Making Connections</h3>
-              <p>Search for movies, shows, or people. Drag items onto the board. Connect them by finding shared cast members or appearances!</p>
-            </div>
-          </div>
-          
-          <div class="tutorial-step" :class="{ 'active': currentStep === 5 }">
-            <div class="step-number">5</div>
+          <!-- Step 7: Pro Tips -->
+          <div class="tutorial-step" :class="{ 'active': currentStep === 7 }">
+            <div class="step-number">7</div>
             <div class="step-content">
               <h3>Pro Tips</h3>
               <p>• Prolific actors connect to many movies<br>
               • Big franchises share lots of cast<br>
               • Use hints when stuck (💡)<br>
               • Fewer connections = higher score!</p>
+              <button class="interactive-button" @click="clickPlayGame">Start Playing!</button>
             </div>
           </div>
         </div>
@@ -66,9 +88,9 @@
         <div class="tutorial-navigation">
           <button class="nav-button prev" @click="previousStep" :disabled="currentStep === 1">← Previous</button>
           <div class="step-indicators">
-            <span v-for="step in 5" :key="step" class="step-dot" :class="{ 'active': step === currentStep }" @click="goToStep(step)"></span>
+            <span v-for="step in totalSteps" :key="step" class="step-dot" :class="{ 'active': step === currentStep }" @click="goToStep(step)"></span>
           </div>
-          <button class="nav-button next" @click="nextStep" :disabled="currentStep === 5">Next →</button>
+          <button class="nav-button next" @click="nextStep" :disabled="currentStep === totalSteps">Next →</button>
         </div>
       </div>
     </div>
@@ -86,9 +108,10 @@ export default {
   emits: ['close', 'start-tutorial'],
   setup(props, { emit }) {
     const currentStep = ref(1)
+    const totalSteps = 7
     
     const closeOverlay = () => emit('close')
-    const nextStep = () => { if (currentStep.value < 5) currentStep.value++ }
+    const nextStep = () => { if (currentStep.value < totalSteps) currentStep.value++ }
     const previousStep = () => { if (currentStep.value > 1) currentStep.value-- }
     const goToStep = (step) => { currentStep.value = step }
     const clickPlayGame = () => { emit('close'); emit('start-tutorial') }
@@ -103,7 +126,7 @@ export default {
     onMounted(() => document.addEventListener('keydown', handleKeydown))
     onUnmounted(() => document.removeEventListener('keydown', handleKeydown))
     
-    return { currentStep, closeOverlay, nextStep, previousStep, goToStep, clickPlayGame }
+    return { currentStep, totalSteps, closeOverlay, nextStep, previousStep, goToStep, clickPlayGame }
   }
 }
 </script>
@@ -269,12 +292,12 @@ export default {
 
 .step-indicators {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
 .step-dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.3);
   cursor: pointer;
@@ -316,5 +339,6 @@ export default {
   .step-number { width: 35px; height: 35px; font-size: 1rem; margin-right: 15px; }
   .step-content h3 { font-size: 1.1rem; }
   .nav-button { padding: 10px 16px; font-size: 0.9rem; }
+  .step-dot { width: 8px; height: 8px; }
 }
 </style>

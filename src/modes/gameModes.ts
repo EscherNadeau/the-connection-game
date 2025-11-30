@@ -72,21 +72,12 @@ export const GAME_MODES = {
     ],
 
     // Settings configuration - now includes numberOfGoals (absorbed from Hybrid)
-    maxItems: 10,
-    settings: ['goal1', 'goal2', 'numberOfGoals', 'pathDifficulty'],
+    maxItems: 2,
+    settings: ['goal1', 'goal2'],
 
     // Multi-goal settings (absorbed from Hybrid mode)
-    goalSettings: {
-      minGoals: 1,
-      maxGoals: 5,
-      defaultGoals: 2,
-    },
 
     // Path difficulty options
-    pathDifficulty: {
-      easy: [],
-      hard: [PATH_MODE_RULES.LINEAR_PATH_ONLY, PATH_MODE_RULES.NO_BACKTRACE, PATH_MODE_RULES.NO_HANGERS],
-    },
 
     commonSettings: COMMON_MODE_SETTINGS,
     winCondition: 'reach_goals',

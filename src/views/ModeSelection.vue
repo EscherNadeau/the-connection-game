@@ -39,8 +39,11 @@
         <div class="oddities-section">
           <button 
             class="oddities-button" 
-            @click="toggleOddities"
-            :class="{ 'active': showOddities }"
+            :class="{ 
+              'active': showOddities,
+              'tutorial-glow-button': showTutorial && tutorialStep === 7.7
+            }"
+            @click="handleOdditiesClick"
           >
             <span class="oddities-icon">🎲</span>
             <span class="oddities-text">{{ showOddities ? 'Hide Oddities' : 'Oddities' }}</span>
@@ -56,8 +59,8 @@
               class="mode-card oddity-card"
               :class="{ 
                 'tutorial-glow': showTutorial && (
-                  (tutorialStep === 7.2 && mode.id === 'knowledge') ||
-                  (tutorialStep === 7.4 && mode.id === 'anti')
+                  (tutorialStep === 7.8 && mode.id === 'knowledge') ||
+                  (tutorialStep === 7.9 && mode.id === 'anti')
                 )
               }"
               @click="selectMode(mode)"
@@ -87,9 +90,7 @@
           <div class="tooltip-description">
             Choose your game mode! Goal Mode is the main game. Zen Mode is for relaxed exploration. Show Builder lets you create custom challenges.
           </div>
-          <button class="tooltip-button" @click="nextTutorialStep">
-            Next
-          </button>
+          <button class="tooltip-button" @click="nextTutorialStep">Next</button>
         </div>
       </div>
     </transition>
@@ -98,43 +99,11 @@
     <transition name="tooltip-fade">
       <div v-if="showTutorial && tutorialStep === 7.1" class="tutorial-tooltip tutorial-tooltip-center">
         <div class="tooltip-content">
-          <div class="tooltip-title">Goal Mode</div>
+          <div class="tooltip-title">🎯 Goal Mode</div>
           <div class="tooltip-description">
-            The main game! Connect a starting item to an ending item by finding the path between them through movies, shows, and actors.
+            The main game! Connect a starting item to an ending item. Find the path through movies, shows, and actors.
           </div>
-          <button class="tooltip-button" @click="nextTutorialStep">
-            Next
-          </button>
-        </div>
-      </div>
-    </transition>
-
-    <!-- Knowledge Mode Explanation -->
-    <transition name="tooltip-fade">
-      <div v-if="showTutorial && tutorialStep === 7.2" class="tutorial-tooltip tutorial-tooltip-center">
-        <div class="tooltip-content">
-          <div class="tooltip-title">Knowledge Mode</div>
-          <div class="tooltip-description">
-            Test your movie knowledge! Start with one item and name as many connections as you can. Great for film buffs!
-          </div>
-          <button class="tooltip-button" @click="nextTutorialStep">
-            Next
-          </button>
-        </div>
-      </div>
-    </transition>
-
-    <!-- Anti Mode Explanation -->
-    <transition name="tooltip-fade">
-      <div v-if="showTutorial && tutorialStep === 7.4" class="tutorial-tooltip tutorial-tooltip-center">
-        <div class="tooltip-content">
-          <div class="tooltip-title">Anti Mode</div>
-          <div class="tooltip-description">
-            The opposite challenge! Try NOT to make connections. Find obscure items that don't link together.
-          </div>
-          <button class="tooltip-button" @click="nextTutorialStep">
-            Next
-          </button>
+          <button class="tooltip-button" @click="nextTutorialStep">Next</button>
         </div>
       </div>
     </transition>
@@ -143,13 +112,11 @@
     <transition name="tooltip-fade">
       <div v-if="showTutorial && tutorialStep === 7.5" class="tutorial-tooltip tutorial-tooltip-center">
         <div class="tooltip-content">
-          <div class="tooltip-title">Zen Mode</div>
+          <div class="tooltip-title">🧘 Zen Mode</div>
           <div class="tooltip-description">
-            Relax and explore! No timer, no pressure. Just discover connections at your own pace.
+            Relax and explore! No timer, no goals. Just discover connections at your own pace.
           </div>
-          <button class="tooltip-button" @click="nextTutorialStep">
-            Next
-          </button>
+          <button class="tooltip-button" @click="nextTutorialStep">Next</button>
         </div>
       </div>
     </transition>
@@ -158,10 +125,48 @@
     <transition name="tooltip-fade">
       <div v-if="showTutorial && tutorialStep === 7.6" class="tutorial-tooltip tutorial-tooltip-center">
         <div class="tooltip-content">
-          <div class="tooltip-title">Ready to Continue!</div>
+          <div class="tooltip-title">Ready to Play!</div>
           <div class="tooltip-description">
-            Now click Goal Mode to go to the settings page and configure your game!
+            Click Goal Mode to continue to settings and start your game!
           </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Oddities Button Tutorial -->
+    <transition name="tooltip-fade">
+      <div v-if="showTutorial && tutorialStep === 7.7" class="tutorial-tooltip tutorial-tooltip-center">
+        <div class="tooltip-content">
+          <div class="tooltip-title">🎲 Oddities</div>
+          <div class="tooltip-description">
+            Click the Oddities button to reveal special game modes with unique twists!
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Knowledge Mode Explanation -->
+    <transition name="tooltip-fade">
+      <div v-if="showTutorial && tutorialStep === 7.8" class="tutorial-tooltip tutorial-tooltip-center">
+        <div class="tooltip-content">
+          <div class="tooltip-title">🧠 Knowledge Mode</div>
+          <div class="tooltip-description">
+            Pick an actor and name every movie they're in! Or pick a movie and name the entire cast! Test how much you really know.
+          </div>
+          <button class="tooltip-button" @click="nextTutorialStep">Next</button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- Anti Mode Explanation -->
+    <transition name="tooltip-fade">
+      <div v-if="showTutorial && tutorialStep === 7.9" class="tutorial-tooltip tutorial-tooltip-center">
+        <div class="tooltip-content">
+          <div class="tooltip-title">🚫 Anti Mode</div>
+          <div class="tooltip-description">
+            The opposite challenge! Find the most obscure items that DON'T connect to each other. Think outside the box!
+          </div>
+          <button class="tooltip-button" @click="nextTutorialStep">Next</button>
         </div>
       </div>
     </transition>
@@ -176,14 +181,8 @@ import { getMainModes, getOddityModes } from '../modes/gameModes'
 export default {
   name: 'ModeSelectionScreen',
   props: {
-    showTutorial: {
-      type: Boolean,
-      default: false
-    },
-    tutorialStep: {
-      type: Number,
-      default: 0
-    }
+    showTutorial: { type: Boolean, default: false },
+    tutorialStep: { type: Number, default: 0 }
   },
   emits: ['back-to-start', 'mode-selected', 'tutorial-next'],
   setup(props, { emit }) {
@@ -195,13 +194,21 @@ export default {
       showOddities.value = !showOddities.value
     }
 
+    const handleOdditiesClick = () => {
+      toggleOddities()
+      // If in tutorial and waiting for oddities click, advance
+      if (props.showTutorial && props.tutorialStep === 7.7) {
+        emit('tutorial-next')
+      }
+    }
+
     const goBack = () => {
       info('Back button clicked')
       emit('back-to-start')
     }
 
     const selectMode = (mode) => {
-      info(\`Mode selected: \${mode.name}\`)
+      info(`Mode selected: ${mode.name}`)
       try {
         const hash = window.location.hash || ''
         const m = hash.match(/play=(solo|multi|pvp)/)
@@ -216,7 +223,8 @@ export default {
       if (props.showTutorial && props.tutorialStep === 7.6 && mode.id === 'goal') {
         nextTutorialStep()
       } else if (props.showTutorial && props.tutorialStep !== 7.6) {
-        nextTutorialStep()
+        // Don't select mode during tutorial unless it's the right step
+        return
       } else {
         emit('mode-selected', mode)
       }
@@ -228,6 +236,10 @@ export default {
 
     onMounted(() => {
       info('ModeSelectionScreen mounted')
+      // Auto-open oddities if tutorial needs it
+      if (props.showTutorial && props.tutorialStep >= 7.8) {
+        showOddities.value = true
+      }
     })
 
     onUnmounted(() => {
@@ -239,6 +251,7 @@ export default {
       oddityModes,
       showOddities,
       toggleOddities,
+      handleOdditiesClick,
       goBack,
       selectMode,
       nextTutorialStep,
@@ -262,13 +275,8 @@ export default {
 .container::before {
     content: '';
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: transparent;
+    top: 0; left: 0; right: 0; bottom: 0;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cfilter id='a'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23a)'/%3E%3C/svg%3E");
-    background-repeat: repeat;
     background-size: 182px;
     opacity: 0.12;
     pointer-events: none;
@@ -278,12 +286,8 @@ export default {
 .container::after {
     content: '';
     position: absolute;
-    top: -5000px;
-    left: -5000px;
-    right: -5000px;
-    bottom: -5000px;
-    width: 15000px;
-    height: 15000px;
+    top: -5000px; left: -5000px; right: -5000px; bottom: -5000px;
+    width: 15000px; height: 15000px;
     background-image: radial-gradient(circle, rgba(255, 255, 255, 0.5) 1px, transparent 1px);
     background-size: 40px 40px;
     opacity: 0.8;
@@ -293,8 +297,7 @@ export default {
 
 .back-button {
     position: absolute;
-    top: 30px;
-    left: 30px;
+    top: 30px; left: 30px;
     padding: 12px 20px;
     background: rgba(255, 255, 255, 0.1);
     color: white;
@@ -306,9 +309,7 @@ export default {
     z-index: 600;
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
 .back-button:hover {
@@ -338,22 +339,17 @@ export default {
     display: flex;
     flex-wrap: nowrap;
     gap: 20px;
-    max-width: 100%;
     padding: 20px 0;
     justify-content: center;
 }
 
 .mode-card {
-    width: 200px;
-    height: 300px;
-    min-width: 200px;
-    flex-shrink: 0;
+    width: 200px; height: 300px; min-width: 200px;
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid transparent;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
-    user-select: none;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -368,9 +364,7 @@ export default {
 }
 
 .oddity-card {
-    width: 180px;
-    height: 270px;
-    min-width: 180px;
+    width: 180px; height: 270px; min-width: 180px;
     border: 2px dashed rgba(255, 255, 255, 0.3);
 }
 
@@ -378,57 +372,24 @@ export default {
     border-color: rgba(255, 200, 100, 0.6);
 }
 
-.mode-card::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    border: 2px solid transparent;
-    border-radius: 8px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-    background:
-        linear-gradient(90deg, rgba(255, 255, 255, 0.3) 50%, transparent 50%),
-        linear-gradient(0deg, rgba(255, 255, 255, 0.3) 50%, transparent 50%),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.3) 50%, transparent 50%),
-        linear-gradient(0deg, rgba(255, 255, 255, 0.3) 50%, transparent 50%);
-    background-size: 20px 2px, 2px 20px, 20px 2px, 2px 20px;
-    background-position: 0 0, 100% 0, 100% 100%, 0 100%;
-    background-repeat: repeat-x, repeat-y, repeat-x, repeat-y;
-    animation: dash-move 2s linear infinite;
-}
-
-.mode-card:hover::before {
-    opacity: 1;
-}
-
 .card-image {
-    width: 100%;
-    height: 200px;
+    width: 100%; height: 200px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: rgba(0, 0, 0, 0.2);
     border-radius: 8px 8px 0 0;
-    overflow: hidden;
     border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
 }
 
-.oddity-card .card-image {
-    height: 170px;
-}
+.oddity-card .card-image { height: 170px; }
 
 .card-icon {
     font-size: 3.5rem;
     color: rgba(255, 255, 255, 0.8);
 }
 
-.oddity-card .card-icon {
-    font-size: 3rem;
-}
+.oddity-card .card-icon { font-size: 3rem; }
 
 .card-info {
     padding: 8px 12px;
@@ -449,7 +410,6 @@ export default {
 .ticket-time, .ticket-price {
     font-size: 0.6rem;
     color: rgba(255, 255, 255, 0.7);
-    font-weight: 500;
 }
 
 .mode-title {
@@ -459,9 +419,7 @@ export default {
     margin-bottom: 4px;
 }
 
-.oddity-card .mode-title {
-    font-size: 0.8rem;
-}
+.oddity-card .mode-title { font-size: 0.8rem; }
 
 .mode-description {
     font-size: 0.7rem;
@@ -469,13 +427,10 @@ export default {
     line-height: 1.2;
 }
 
-.oddity-card .mode-description {
-    font-size: 0.65rem;
-}
+.oddity-card .mode-description { font-size: 0.65rem; }
 
-.oddities-section {
-    margin-top: 10px;
-}
+/* Oddities Button */
+.oddities-section { margin-top: 10px; }
 
 .oddities-button {
     display: flex;
@@ -506,29 +461,26 @@ export default {
     border-style: solid;
 }
 
-.oddities-icon {
-    font-size: 1.2rem;
+.oddities-icon { font-size: 1.2rem; }
+
+/* Tutorial glow for button */
+.oddities-button.tutorial-glow-button {
+    box-shadow: 0 0 30px rgba(255, 200, 100, 0.6), 0 0 60px rgba(255, 200, 100, 0.3) !important;
+    border-color: rgba(255, 200, 100, 0.8) !important;
+    animation: buttonGlow 2s ease-in-out infinite;
 }
 
-.slide-fade-enter-active {
-    transition: all 0.4s ease-out;
+@keyframes buttonGlow {
+    0%, 100% { box-shadow: 0 0 30px rgba(255, 200, 100, 0.6), 0 0 60px rgba(255, 200, 100, 0.3); }
+    50% { box-shadow: 0 0 40px rgba(255, 200, 100, 0.8), 0 0 80px rgba(255, 200, 100, 0.5); }
 }
 
-.slide-fade-leave-active {
-    transition: all 0.3s ease-in;
-}
+/* Transitions */
+.slide-fade-enter-active { transition: all 0.4s ease-out; }
+.slide-fade-leave-active { transition: all 0.3s ease-in; }
+.slide-fade-enter-from, .slide-fade-leave-to { opacity: 0; transform: translateY(-20px); }
 
-.slide-fade-enter-from, .slide-fade-leave-to {
-    opacity: 0;
-    transform: translateY(-20px);
-}
-
-@keyframes dash-move {
-    0% { background-position: 0 0, 100% 0, 100% 100%, 0 100%; }
-    100% { background-position: 20px 0, 100% 20px, calc(100% - 20px) 100%, 0 calc(100% - 20px); }
-}
-
-/* Tutorial styles */
+/* Tutorial Tooltips */
 .tutorial-tooltip {
     position: fixed !important;
     top: 120px;
@@ -538,7 +490,7 @@ export default {
 }
 
 .tooltip-content {
-    width: 300px;
+    width: 320px;
     background: #2d3a2e;
     border: 2px solid rgba(78, 205, 196, 0.3);
     border-radius: 8px;
@@ -558,7 +510,7 @@ export default {
 .tooltip-description {
     font-size: 0.9rem;
     color: rgba(255, 255, 255, 0.9);
-    line-height: 1.4;
+    line-height: 1.5;
     margin-bottom: 16px;
 }
 
@@ -580,14 +532,10 @@ export default {
     background: rgba(255, 255, 255, 0.2);
 }
 
-.tooltip-fade-enter-active, .tooltip-fade-leave-active {
-    transition: opacity 0.3s ease;
-}
+.tooltip-fade-enter-active, .tooltip-fade-leave-active { transition: opacity 0.3s ease; }
+.tooltip-fade-enter-from, .tooltip-fade-leave-to { opacity: 0; }
 
-.tooltip-fade-enter-from, .tooltip-fade-leave-to {
-    opacity: 0;
-}
-
+/* Tutorial Glow for Cards */
 .mode-card.tutorial-glow {
     box-shadow: 0 0 30px rgba(78, 205, 196, 0.6), 0 0 60px rgba(78, 205, 196, 0.3) !important;
     border: 2px solid rgba(78, 205, 196, 0.8) !important;
@@ -599,6 +547,7 @@ export default {
     50% { box-shadow: 0 0 40px rgba(78, 205, 196, 0.8), 0 0 80px rgba(78, 205, 196, 0.5); }
 }
 
+/* Responsive */
 @media (max-width: 768px) {
     .mode-grid { flex-wrap: wrap; gap: 15px; }
     .mode-card { width: 160px; height: 260px; min-width: 160px; }
