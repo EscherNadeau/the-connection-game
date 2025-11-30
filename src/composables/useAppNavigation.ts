@@ -196,6 +196,9 @@ export function useAppNavigation(
   /**
    * Start game from settings screen
    */
+  /**
+   * Start game from settings screen
+   */
   function startGameFromSettings(modeWithSettings: GameMode): void {
     info( 'App.vue received start-game from settings', modeWithSettings)
     gameMode.value = modeWithSettings
@@ -214,20 +217,24 @@ export function useAppNavigation(
     // Use MultiplayerService to determine the next view (needs original URL play type)
     const multiplayerConfig = multiplayerService.initializeMultiplayer(modeWithSettings.id, urlPlayType, gameOptions.value)
     
-    // Override view for couch modes on phone
-    // Check if we're joining (phone) or hosting (PC)
-    // Phone sets 'isJoiningRoom' flag when scanning QR, PC doesn't
-    let targetView = multiplayerConfig.view
+    // Determine if we're joining (phone scanned QR) or hosting (PC created room)
     const isJoiningRoom = sessionStorage.getItem('isJoiningRoom') === 'true'
-    debug('Settings: Routing decision', { urlPlayType, mappedPlayType, targetView, isJoiningRoom })
+    let targetView = multiplayerConfig.view
     
-    if ((urlPlayType === 'couch-multiplayer' || urlPlayType === 'couch-pvp') && targetView === 'waiting-room' && isJoiningRoom) {
-      debug('Settings: Couch mode + joining room, forcing phone-waiting-room (joining phone)')
-      targetView = 'phone-waiting-room'
-      // Clear the flag after using it
-      sessionStorage.removeItem('isJoiningRoom')
-    } else if ((urlPlayType === 'couch-multiplayer' || urlPlayType === 'couch-pvp') && targetView === 'waiting-room') {
-      debug('Settings: Couch mode + hosting room, keeping waiting-room (hosting PC)')
+    debug('Settings: Routing decision', { urlPlayType, mappedPlayType, targetView, isJoiningRoom, isMobile: multiplayerService.isMobile })
+    
+    // For couch modes, override the isMobile detection:
+    // - If HOSTING (PC created the room): always show waiting-room with QR code
+    // - If JOINING (phone scanned QR): always show phone-waiting-room
+    if (urlPlayType === 'couch-multiplayer' || urlPlayType === 'couch-pvp') {
+      if (isJoiningRoom) {
+        debug('Settings: Couch mode + joining room → phone-waiting-room')
+        targetView = 'phone-waiting-room'
+        sessionStorage.removeItem('isJoiningRoom')
+      } else {
+        debug('Settings: Couch mode + hosting room → waiting-room (PC with QR)')
+        targetView = 'waiting-room'
+      }
     }
     
     // Route based on play type
@@ -239,10 +246,6 @@ export function useAppNavigation(
       currentView.value = targetView as ViewName
     }
   }
-
-  /**
-   * Start game from waiting room
-   */
   function startGameFromWaitingRoom(): void {
     info( 'App.vue received start-game from waiting room')
     roomManagement.suppressAutoJoin.value = false

@@ -124,7 +124,7 @@ export const GAME_MODES = {
     title: 'Show Builder',
     description: 'Create themed challenge collections',
     icon: '📺',
-    category: MODE_CATEGORIES.MAIN,
+    category: MODE_CATEGORIES.HIDDEN,
 
     defaultRules: [],
 
