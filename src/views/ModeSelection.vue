@@ -5,35 +5,77 @@
 
     <!-- Main content -->
     <div class="main-content">
-        <div class="mode-grid">
+      <!-- Main Modes Section -->
+      <div class="modes-section">
+        <div class="mode-grid main-modes">
           <div
-            v-for="mode in gameModes"
+            v-for="mode in mainModes"
             :key="mode.id"
             class="mode-card"
-          :class="{ 
-            'tutorial-glow': showTutorial && (
-              (tutorialStep === 7.1 && mode.id === 'goal') ||
-              (tutorialStep === 7.2 && mode.id === 'knowledge') ||
-              (tutorialStep === 7.3 && mode.id === 'hybrid') ||
-              (tutorialStep === 7.4 && mode.id === 'anti') ||
-              (tutorialStep === 7.5 && mode.id === 'zen') ||
-              (tutorialStep === 7.6 && mode.id === 'goal')
-            )
-          }"
+            :class="{ 
+              'tutorial-glow': showTutorial && (
+                (tutorialStep === 7.1 && mode.id === 'goal') ||
+                (tutorialStep === 7.5 && mode.id === 'zen') ||
+                (tutorialStep === 7.6 && mode.id === 'goal')
+              )
+            }"
             @click="selectMode(mode)"
-        >
-          <div class="card-image">
-            <div class="card-icon">{{ mode.icon }}</div>
-          </div>
-          <div class="card-info">
-            <div class="ticket-details">
-              <div class="ticket-time">8:00 PM</div>
-              <div class="ticket-price">FREE</div>
+          >
+            <div class="card-image">
+              <div class="card-icon">{{ mode.icon }}</div>
             </div>
-            <div class="mode-title">{{ mode.name }}</div>
-            <div class="mode-description">{{ mode.description }}</div>
+            <div class="card-info">
+              <div class="ticket-details">
+                <div class="ticket-time">8:00 PM</div>
+                <div class="ticket-price">FREE</div>
+              </div>
+              <div class="mode-title">{{ mode.name }}</div>
+              <div class="mode-description">{{ mode.description }}</div>
+            </div>
           </div>
         </div>
+
+        <!-- Oddities Button -->
+        <div class="oddities-section">
+          <button 
+            class="oddities-button" 
+            @click="toggleOddities"
+            :class="{ 'active': showOddities }"
+          >
+            <span class="oddities-icon">🎲</span>
+            <span class="oddities-text">{{ showOddities ? 'Hide Oddities' : 'Oddities' }}</span>
+          </button>
+        </div>
+
+        <!-- Oddities Modes (expandable) -->
+        <transition name="slide-fade">
+          <div v-if="showOddities" class="mode-grid oddity-modes">
+            <div
+              v-for="mode in oddityModes"
+              :key="mode.id"
+              class="mode-card oddity-card"
+              :class="{ 
+                'tutorial-glow': showTutorial && (
+                  (tutorialStep === 7.2 && mode.id === 'knowledge') ||
+                  (tutorialStep === 7.4 && mode.id === 'anti')
+                )
+              }"
+              @click="selectMode(mode)"
+            >
+              <div class="card-image">
+                <div class="card-icon">{{ mode.icon }}</div>
+              </div>
+              <div class="card-info">
+                <div class="ticket-details">
+                  <div class="ticket-time">SPECIAL</div>
+                  <div class="ticket-price">FREE</div>
+                </div>
+                <div class="mode-title">{{ mode.name }}</div>
+                <div class="mode-description">{{ mode.description }}</div>
+              </div>
+            </div>
+          </div>
+        </transition>
       </div>
     </div>
 
@@ -43,7 +85,7 @@
         <div class="tooltip-content">
           <div class="tooltip-title">Mode Selection</div>
           <div class="tooltip-description">
-            Here you can choose different game modes! Each mode has unique rules and challenges. Let's explore each one.
+            Choose your game mode! Goal Mode is the main game. Zen Mode is for relaxed exploration. Show Builder lets you create custom challenges.
           </div>
           <button class="tooltip-button" @click="nextTutorialStep">
             Next
@@ -58,7 +100,7 @@
         <div class="tooltip-content">
           <div class="tooltip-title">Goal Mode</div>
           <div class="tooltip-description">
-            Connect items to reach a specific goal. You'll be given a starting point and an ending point, and need to find the path between them.
+            The main game! Connect a starting item to an ending item by finding the path between them through movies, shows, and actors.
           </div>
           <button class="tooltip-button" @click="nextTutorialStep">
             Next
@@ -73,7 +115,7 @@
         <div class="tooltip-content">
           <div class="tooltip-title">Knowledge Mode</div>
           <div class="tooltip-description">
-            Start with one item and uncover all its connections—list a movie's full cast or every film a person has been in!
+            Test your movie knowledge! Start with one item and name as many connections as you can. Great for film buffs!
           </div>
           <button class="tooltip-button" @click="nextTutorialStep">
             Next
@@ -81,22 +123,6 @@
         </div>
       </div>
     </transition>
-
-    <!-- Hybrid Mode Explanation -->
-    <transition name="tooltip-fade">
-      <div v-if="showTutorial && tutorialStep === 7.3" class="tutorial-tooltip tutorial-tooltip-center">
-        <div class="tooltip-content">
-          <div class="tooltip-title">Hybrid Mode</div>
-          <div class="tooltip-description">
-            Start with one item and reach specific goals! Like starting with Jack Black and reaching Cars. Name things Jack is in, then work toward your goals!
-          </div>
-          <button class="tooltip-button" @click="nextTutorialStep">
-            Next
-          </button>
-        </div>
-      </div>
-    </transition>
-
 
     <!-- Anti Mode Explanation -->
     <transition name="tooltip-fade">
@@ -104,7 +130,7 @@
         <div class="tooltip-content">
           <div class="tooltip-title">Anti Mode</div>
           <div class="tooltip-description">
-            Try NOT to make connections! Stay alive as long as possible by avoiding obvious links. The longer you last, the better you do!
+            The opposite challenge! Try NOT to make connections. Find obscure items that don't link together.
           </div>
           <button class="tooltip-button" @click="nextTutorialStep">
             Next
@@ -119,7 +145,7 @@
         <div class="tooltip-content">
           <div class="tooltip-title">Zen Mode</div>
           <div class="tooltip-description">
-            Do whatever you want! No rules, no pressure. Just explore connections and have fun at your own pace.
+            Relax and explore! No timer, no pressure. Just discover connections at your own pace.
           </div>
           <button class="tooltip-button" @click="nextTutorialStep">
             Next
@@ -139,40 +165,13 @@
         </div>
       </div>
     </transition>
-
-    <transition name="tooltip-fade">
-      <div v-if="showTutorial && tutorialStep === 8" class="tutorial-tooltip tutorial-tooltip-center">
-        <div class="tooltip-content">
-          <div class="tooltip-title">Waiting Room</div>
-          <div class="tooltip-description">
-            This is the waiting room! Players join here before the game starts. You can see who's ready and start when everyone's in.
-          </div>
-          <button class="tooltip-button" @click="nextTutorialStep">
-            Next
-          </button>
-        </div>
-      </div>
-    </transition>
-
-    <transition name="tooltip-fade">
-      <div v-if="showTutorial && tutorialStep === 9" class="tutorial-tooltip tutorial-tooltip-center">
-        <div class="tooltip-content">
-          <div class="tooltip-title">Game Board</div>
-          <div class="tooltip-description">
-            This is the main game board! Here you'll see the items to connect and make your moves. Ready to see how shows work?
-          </div>
-          <button class="tooltip-button" @click="nextTutorialStep">
-            Next
-          </button>
-        </div>
-      </div>
-    </transition>
   </div>
 </template>
 
 <script>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { info, debug } from '../services/ui/log'
+import { getMainModes, getOddityModes } from '../modes/gameModes'
 
 export default {
   name: 'ModeSelectionScreen',
@@ -188,58 +187,21 @@ export default {
   },
   emits: ['back-to-start', 'mode-selected', 'tutorial-next'],
   setup(props, { emit }) {
+    const showOddities = ref(false)
+    const mainModes = ref(getMainModes())
+    const oddityModes = ref(getOddityModes())
 
-    // Game modes
-    const gameModes = ref([
-      {
-        id: 'goal',
-        name: 'Goal Mode',
-        title: 'Goal Mode',
-        description:
-          'Connect items to reach a specific goal. Can be enhanced with Path Mode rules for harder challenges',
-        icon: '🎯',
-      },
+    const toggleOddities = () => {
+      showOddities.value = !showOddities.value
+    }
 
-      {
-        id: 'knowledge',
-        name: 'Knowledge Mode',
-        title: 'Knowledge Mode',
-        description: 'Start with one item and find all its connections!',
-        icon: '🧠',
-      },
-      {
-        id: 'hybrid',
-        name: 'Hybrid Mode',
-        title: 'Hybrid Mode',
-        description: 'Multiple end goals from one starting point',
-        icon: '🔗',
-      },
-      {
-        id: 'anti',
-        name: 'Anti Mode',
-        title: 'Anti Mode',
-        description: 'Avoid connections, think differently',
-        icon: '🚫',
-      },
-      {
-        id: 'zen',
-        name: 'Zen Mode',
-        title: 'Zen Mode',
-        description: 'Relaxed gameplay with no time pressure',
-        icon: '🧘',
-      },
-    ])
-
-    // Go back to start screen
     const goBack = () => {
       info('Back button clicked')
       emit('back-to-start')
     }
 
-    // Select game mode
     const selectMode = (mode) => {
-      info(`Mode selected: ${mode.name}`)
-      // Capture play type from URL hash (set by PlayType)
+      info(\`Mode selected: \${mode.name}\`)
       try {
         const hash = window.location.hash || ''
         const m = hash.match(/play=(solo|multi|pvp)/)
@@ -252,21 +214,18 @@ export default {
       }
       
       if (props.showTutorial && props.tutorialStep === 7.6 && mode.id === 'goal') {
-        // Tutorial step - click Goal Mode to continue
         nextTutorialStep()
       } else if (props.showTutorial && props.tutorialStep !== 7.6) {
-        // Other tutorial steps - just advance
         nextTutorialStep()
       } else {
-      emit('mode-selected', mode)
-    }
+        emit('mode-selected', mode)
+      }
     }
 
     const nextTutorialStep = () => {
       emit('tutorial-next')
     }
 
-    // Lifecycle
     onMounted(() => {
       info('ModeSelectionScreen mounted')
     })
@@ -276,7 +235,10 @@ export default {
     })
 
     return {
-      gameModes,
+      mainModes,
+      oddityModes,
+      showOddities,
+      toggleOddities,
       goBack,
       selectMode,
       nextTutorialStep,
@@ -286,12 +248,7 @@ export default {
 </script>
 
 <style scoped>
-/* Import Inter font */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
-/* ========================================
-   MAIN CONTAINER
-   ======================================== */
 
 .container {
     position: relative;
@@ -334,10 +291,6 @@ export default {
     z-index: 2;
 }
 
-/* ========================================
-   BACK BUTTON
-   ======================================== */
-
 .back-button {
     position: absolute;
     top: 30px;
@@ -348,29 +301,37 @@ export default {
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     cursor: pointer;
-  font-size: 0.9rem;
+    font-size: 0.9rem;
     font-weight: 600;
     z-index: 600;
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
-/* ========================================
-   MAIN CONTENT
-   ======================================== */
+.back-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
 
 .main-content {
     display: flex;
-    align-items: flex-end;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
     height: 100vh;
-    padding: 40px 40px 120px 40px;
+    padding: 40px;
     position: relative;
-  z-index: 10;
+    z-index: 10;
+}
+
+.modes-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 30px;
 }
 
 .mode-grid {
@@ -378,8 +339,6 @@ export default {
     flex-wrap: nowrap;
     gap: 20px;
     max-width: 100%;
-    width: 100%;
-    overflow-x: auto;
     padding: 20px 0;
     justify-content: center;
 }
@@ -391,20 +350,34 @@ export default {
     flex-shrink: 0;
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid transparent;
-  border-radius: 8px;
-  cursor: pointer;
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
     user-select: none;
     overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  position: relative;
+    display: flex;
+    flex-direction: column;
+    position: relative;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
 }
 
-/* Animated dashed border */
+.mode-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+}
+
+.oddity-card {
+    width: 180px;
+    height: 270px;
+    min-width: 180px;
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+}
+
+.oddity-card:hover {
+    border-color: rgba(255, 200, 100, 0.6);
+}
+
 .mode-card::before {
     content: '';
     position: absolute;
@@ -440,19 +413,21 @@ export default {
     justify-content: center;
     background: rgba(0, 0, 0, 0.2);
     border-radius: 8px 8px 0 0;
-  overflow: hidden;
-    margin-top: 0;
-    position: relative;
+    overflow: hidden;
     border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
+}
+
+.oddity-card .card-image {
+    height: 170px;
 }
 
 .card-icon {
     font-size: 3.5rem;
     color: rgba(255, 255, 255, 0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
+}
+
+.oddity-card .card-icon {
+    font-size: 3rem;
 }
 
 .card-info {
@@ -461,35 +436,20 @@ export default {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    position: relative;
 }
 
 .ticket-details {
     display: flex;
     justify-content: space-between;
-    align-items: center;
     margin-bottom: 8px;
     padding-bottom: 8px;
     border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
 }
 
-.ticket-time {
+.ticket-time, .ticket-price {
     font-size: 0.6rem;
     color: rgba(255, 255, 255, 0.7);
     font-weight: 500;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-.ticket-price {
-    font-size: 0.6rem;
-    color: rgba(255, 255, 255, 0.7);
-    font-weight: 500;
-  text-transform: uppercase;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
 }
 
 .mode-title {
@@ -497,85 +457,81 @@ export default {
     font-weight: 700;
     color: white;
     margin-bottom: 4px;
-    line-height: 1.2;
-    text-align: left;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+}
+
+.oddity-card .mode-title {
+    font-size: 0.8rem;
 }
 
 .mode-description {
     font-size: 0.7rem;
     color: rgba(255, 255, 255, 0.7);
-    text-align: left;
-  line-height: 1.2;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.2;
 }
 
-/* ========================================
-   RESPONSIVE DESIGN
-   ======================================== */
-
-@media (max-width: 768px) {
-  .mode-grid {
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 20px;
-  }
-
-  .mode-card {
-        width: 180px;
-        height: 280px;
-    }
-    
-    .main-content {
-        padding: 20px;
-    }
+.oddity-card .mode-description {
+    font-size: 0.65rem;
 }
 
-@media (max-width: 480px) {
-  .mode-grid {
-        grid-template-columns: 1fr;
-    gap: 15px;
-  }
+.oddities-section {
+    margin-top: 10px;
+}
 
-  .mode-card {
-        width: 100%;
-        max-width: 200px;
-        height: 300px;
-    }
-    
-    .main-content {
-        padding: 10px;
-    }
+.oddities-button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 24px;
+    background: rgba(255, 200, 100, 0.1);
+    border: 2px dashed rgba(255, 200, 100, 0.4);
+    border-radius: 30px;
+    color: rgba(255, 200, 100, 0.9);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.oddities-button:hover {
+    background: rgba(255, 200, 100, 0.2);
+    border-color: rgba(255, 200, 100, 0.6);
+    transform: scale(1.05);
+}
+
+.oddities-button.active {
+    background: rgba(255, 200, 100, 0.2);
+    border-style: solid;
+}
+
+.oddities-icon {
+    font-size: 1.2rem;
+}
+
+.slide-fade-enter-active {
+    transition: all 0.4s ease-out;
+}
+
+.slide-fade-leave-active {
+    transition: all 0.3s ease-in;
+}
+
+.slide-fade-enter-from, .slide-fade-leave-to {
+    opacity: 0;
+    transform: translateY(-20px);
 }
 
 @keyframes dash-move {
-    0% {
-        background-position: 0 0, 100% 0, 100% 100%, 0 100%;
-    }
-    100% {
-        background-position: 20px 0, 100% 20px, calc(100% - 20px) 100%, 0 calc(100% - 20px);
-    }
+    0% { background-position: 0 0, 100% 0, 100% 100%, 0 100%; }
+    100% { background-position: 20px 0, 100% 20px, calc(100% - 20px) 100%, 0 calc(100% - 20px); }
 }
 
-/* ========================================
-   TUTORIAL TOOLTIPS
-   ======================================== */
-
+/* Tutorial styles */
 .tutorial-tooltip {
     position: fixed !important;
-    top: 250px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 999 !important;
-    pointer-events: auto;
-}
-
-.tutorial-tooltip-center {
-    position: fixed !important;
-    top: 250px;
+    top: 120px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 999 !important;
@@ -583,20 +539,12 @@ export default {
 
 .tooltip-content {
     width: 300px;
-    height: 200px;
     background: #2d3a2e;
     border: 2px solid rgba(78, 205, 196, 0.3);
     border-radius: 8px;
     padding: 20px;
     text-align: center;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    pointer-events: auto;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    font-family: 'Courier New', 'Monaco', 'Menlo', 'Consolas', monospace;
-    position: relative;
 }
 
 .tooltip-title {
@@ -604,13 +552,11 @@ export default {
     font-weight: 700;
     color: white;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
     margin-bottom: 8px;
 }
 
 .tooltip-description {
     font-size: 0.9rem;
-    font-weight: 400;
     color: rgba(255, 255, 255, 0.9);
     line-height: 1.4;
     margin-bottom: 16px;
@@ -627,54 +573,42 @@ export default {
     cursor: pointer;
     transition: all 0.2s ease;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-family: 'Courier New', 'Monaco', 'Menlo', 'Consolas', monospace;
-    z-index: 50001 !important;
-    position: relative;
-    margin-top: 8px;
+    font-family: inherit;
 }
 
 .tooltip-button:hover {
     background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.4);
-    transform: translateY(-1px);
 }
 
-.tooltip-fade-enter-active,
-.tooltip-fade-leave-active {
+.tooltip-fade-enter-active, .tooltip-fade-leave-active {
     transition: opacity 0.3s ease;
 }
 
-.tooltip-fade-enter-from,
-.tooltip-fade-leave-to {
+.tooltip-fade-enter-from, .tooltip-fade-leave-to {
     opacity: 0;
 }
 
-/* ========================================
-   TUTORIAL GLOW EFFECT
-   ======================================== */
-
 .mode-card.tutorial-glow {
     box-shadow: 0 0 30px rgba(78, 205, 196, 0.6), 0 0 60px rgba(78, 205, 196, 0.3) !important;
-    z-index: 10 !important;
-    position: relative !important;
     border: 2px solid rgba(78, 205, 196, 0.8) !important;
-}
-
-.mode-card.tutorial-glow::before {
-    opacity: 0 !important;
-}
-
-.mode-card.tutorial-glow:hover::before {
-    opacity: 1 !important;
+    animation: cardGlow 2s ease-in-out infinite;
 }
 
 @keyframes cardGlow {
-    0%, 100% {
-        box-shadow: 0 0 30px rgba(78, 205, 196, 0.6), 0 0 60px rgba(78, 205, 196, 0.3) !important;
-    }
-    50% {
-        box-shadow: 0 0 40px rgba(78, 205, 196, 0.8), 0 0 80px rgba(78, 205, 196, 0.5) !important;
-    }
+    0%, 100% { box-shadow: 0 0 30px rgba(78, 205, 196, 0.6), 0 0 60px rgba(78, 205, 196, 0.3); }
+    50% { box-shadow: 0 0 40px rgba(78, 205, 196, 0.8), 0 0 80px rgba(78, 205, 196, 0.5); }
+}
+
+@media (max-width: 768px) {
+    .mode-grid { flex-wrap: wrap; gap: 15px; }
+    .mode-card { width: 160px; height: 260px; min-width: 160px; }
+    .oddity-card { width: 140px; height: 230px; min-width: 140px; }
+    .main-content { padding: 20px; }
+}
+
+@media (max-width: 480px) {
+    .mode-card { width: 140px; height: 240px; min-width: 140px; }
+    .oddity-card { width: 120px; height: 200px; min-width: 120px; }
+    .oddities-button { padding: 10px 18px; font-size: 0.8rem; }
 }
 </style>
