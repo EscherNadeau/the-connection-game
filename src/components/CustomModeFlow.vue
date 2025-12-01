@@ -1,4 +1,5 @@
 <template>
+  <ShowBuilderHelp :is-open="firstTime" @close="$emit('help-dismissed')" />
   <div class="show-builder">
     <!-- Header -->
     <div class="header">
@@ -441,6 +442,7 @@
 </template>
 
 <script>
+import ShowBuilderHelp from './ShowBuilderHelp.vue'
 import SearchPanel from './SearchPanel.vue'
 import ItemService from '../services/ItemService.ts'
 import { validate } from '../utils/validation.ts'
@@ -448,6 +450,7 @@ import { validate } from '../utils/validation.ts'
 export default {
   name: 'CustomModeFlow',
   components: {
+    ShowBuilderHelp,
     SearchPanel
   },
   props: {
@@ -459,12 +462,13 @@ export default {
       type: Boolean,
       default: false
     },
+    firstTime: { type: Boolean, default: false },
     tutorialStep: {
       type: Number,
       default: 0
     }
   },
-  emits: ['back', 'start-game', 'browser-opened', 'tutorial-next'],
+  emits: ['back', 'start-game', 'browser-opened', 'tutorial-next', 'help-dismissed'],
   data() {
     return {
       availableModes: [

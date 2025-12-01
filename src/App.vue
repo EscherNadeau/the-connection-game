@@ -3,82 +3,46 @@
     <div class="app-bg" :style="{ backgroundImage: bgUrl ? `url(${bgUrl})` : 'none' }">
       <div class="app-bg-image"></div>
     </div>
+    
+    <!-- Start Screen -->
     <template v-if="currentView === 'start'">
       <Home 
-        :show-tutorial="showTutorial"
-        :tutorial-step="tutorialStep"
-        :tutorial-just-completed="tutorialJustCompleted"
-        @start-game="handleStartFromHome" 
-        @how-to-play="showHowToPlay = true"
-        @tutorial-start="startTutorial"
-        @tutorial-next="nextTutorialStep"
-        @tutorial-step="setTutorialStep"
-        @tutorial-completion-shown="tutorialJustCompleted = false"
+        @start-game="handleStartGame" 
+        @how-to-play="showRulebook = true"
         @open-profile-page="currentView = 'profile'"
+        @open-custom-mode="currentView = 'custom-mode'"
       />
     </template>
-    <template v-else-if="currentView === 'join-room'">
-      <JoinRoom @back="goToStart" @join="joinByCode" />
-    </template>
+    
+    <!-- Mode Selection -->
     <template v-else-if="currentView === 'mode-selection'">
       <ModeSelection 
-        :show-tutorial="showTutorial" 
-        :tutorial-step="tutorialStep"
         @back-to-start="goToStart" 
         @mode-selected="selectGameMode"
-        @tutorial-next="nextTutorialStep"
       />
     </template>
-    <template v-else-if="currentView === 'settings' && gameModeWithTitle">
+    
+    <!-- Settings Screen -->
+    <template v-else-if="currentView === 'settings' && gameMode">
       <SettingsScreen 
-        :mode="gameModeWithTitle" 
-        :show-tutorial="showTutorial"
-        :tutorial-step="tutorialStep"
-        @start-game="startGameFromSettings" 
-        @go-back="goBackToModeSelection"
-        @tutorial-next="nextTutorialStep"
-        @tutorial-jump-to-step="jumpToTutorialStepWithView"
+        :mode="gameMode" 
+        @start-game="startGame" 
+        @go-back="currentView = 'mode-selection'"
       />
     </template>
-    <template v-else-if="currentView === 'waiting-room' && gameMode">
-      <WaitingRoom 
-        :game-mode="gameMode" 
-        :game-options="gameOptions"
-        :show-tutorial="showTutorial"
-        :tutorial-step="tutorialStep"
-        @back="goBackToModeSelection" 
-        @start-game="startGameFromWaitingRoom"
-        @tutorial-next="nextTutorialStep"
-      />
-    </template>
-
-    <template v-else-if="currentView === 'phone-waiting-room'">
-      <PhoneWaitingRoom 
-        :game-mode="gameMode" 
-        :game-options="gameOptions" 
-        @game-started="switchToGame" 
-      />
-    </template>
+    
+    <!-- Game -->
     <template v-else-if="currentView === 'game' && gameMode">
       <Game 
         :gameMode="gameMode" 
         :gameOptions="gameOptions" 
-        :showTutorial="showTutorial"
-        :tutorialStep="tutorialStep"
         @back-to-start="goToStart"
-        @back-to-mode-selection="goToModeSelection"
-        @tutorial-next="nextTutorialStep"
-        @tutorial-start="startTutorial"
-        @tutorial-completed="markTutorialCompleted"
+        @back-to-mode-selection="currentView = 'mode-selection'"
         @finish-show="onFinishShow"
       />
     </template>
-    <template v-else-if="currentView === 'controller' && gameMode">
-      <ControllerView 
-        v-bind="controllerViewProps"
-        @game-started="switchToGame" 
-      />
-    </template>
+    
+    <!-- Show Builder -->
     <template v-else-if="currentView === 'custom-mode'">
       <CustomModeFlow 
         ref="customModePanelRef"
@@ -86,257 +50,181 @@
         @start-game="handleCustomGameStart" 
         :open-browser-on-load="openBrowserOnLoad" 
         @browser-opened="openBrowserOnLoad = false"
-        :show-tutorial="showTutorial"
-        :tutorial-step="tutorialStep"
-        @tutorial-next="nextTutorialStep"
+        :first-time="!hasSeenShowBuilder"
+        @help-dismissed="markShowBuilderSeen"
       />
     </template>
+    
+    <!-- Reset Password -->
     <template v-else-if="currentView === 'reset-password'">
       <ResetPassword @back-to-start="goToStart" />
     </template>
+    
+    <!-- Profile Page -->
     <template v-else-if="currentView === 'profile'">
       <ProfilePage @back="goToStart" />
     </template>
     
-    <!-- How to Play Overlay -->
-    <HowToPlayOverlay 
-      :is-visible="showHowToPlay" 
-      @close="showHowToPlay = false"
-      @start-tutorial="startTutorialFromHowToPlayWrapper"
+    <!-- Rulebook Modal (first load + how to play button) -->
+    <RulebookModal 
+      :is-open="showRulebook" 
+      @close="closeRulebook"
     />
-    
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import Home from './views/Home.vue'
-import JoinRoom from './views/JoinRoom.vue'
-import WaitingRoom from './views/WaitingRoom.vue'
 import ModeSelection from './views/ModeSelection.vue'
 import SettingsScreen from './components/SettingsScreen.vue'
-import PhoneWaitingRoom from './components/PhoneWaitingRoom.vue'
-import ControllerView from './components/ControllerView.vue'
 import Game from './views/Game.vue'
-import HowToPlayOverlay from './components/HowToPlayOverlay.vue'
+import RulebookModal from './components/RulebookModal.vue'
 import CustomModeFlow from './components/CustomModeFlow.vue'
 import ResetPassword from './views/ResetPassword.vue'
 import ProfilePage from './views/ProfilePage.vue'
-import { debug, warn, error as logError } from './services/ui/log'
+import { debug, error as logError } from './services/ui/log'
 import { useBackgroundStore } from '@store/background.store'
-import config from './config/env'
-import { useTutorial, type ViewName } from './composables/useTutorial'
 import { useShowImport } from './composables/useShowImport'
-import { useRoomManagement } from './composables/useRoomManagement'
-import { useAppNavigation, type GameMode } from './composables/useAppNavigation'
-import type { GameOptions, ControllerViewProps } from './types/game'
+import type { GameOptions } from './types/game'
+
+// Types
+type ViewName = 'start' | 'mode-selection' | 'settings' | 'game' | 'custom-mode' | 'reset-password' | 'profile'
+
+interface GameMode {
+  id: string
+  name: string
+  title?: string
+  description?: string
+  icon?: string
+  color?: string
+  settings?: Record<string, unknown>
+}
 
 // Reactive state
 const currentView = ref<ViewName>('start')
 const gameMode = ref<GameMode | null>(null)
 const gameOptions = ref<GameOptions>({} as GameOptions)
-const showHowToPlay = ref(false)
-const bgReady = ref(false)
+const showRulebook = ref(false)
+const hasSeenShowBuilder = ref(false)
 const customModePanelRef = ref<InstanceType<typeof CustomModeFlow> | null>(null)
 
-// Computed property to ensure gameMode has required title for SettingsScreen
-const gameModeWithTitle = computed(() => {
-  if (!gameMode.value) return null
-    return {
-    ...gameMode.value,
-    title: gameMode.value.title || gameMode.value.name || 'Game Mode'
-  }
-})
+// Show import
+const { openBrowserOnLoad, checkForShowImport, importShow } = useShowImport()
 
-// Computed property for ControllerView props
-const controllerViewProps = computed((): ControllerViewProps => ({
-  modeTitle: gameMode.value?.title || gameMode.value?.name || 'Game Mode',
-  roomCode: gameOptions.value.roomCode || '',
-  playerName: 'Player',
-  isMobile: false,
-  playType: gameOptions.value.playType || 'single',
-  currentUrl: typeof window !== 'undefined' ? window.location.href : '',
-  itemsAdded: 0,
-  maxItems: 100,
-  searchResults: [],
-  recentItems: [],
-  currentTurnPlayer: '',
-  turnTimeLeft: 0,
-  playerItems: 0,
-  isMyTurn: true,
-  playerBoardItems: []
-}))
-
-// Composables
-const tutorial = useTutorial()
-const { showTutorial, tutorialStep, tutorialJustCompleted, startTutorial, nextTutorialStep, setTutorialStep, jumpToTutorialStep, markTutorialCompleted, resetTutorial, startTutorialFromHowToPlay } = tutorial
-
-const showImport = useShowImport()
-const { openBrowserOnLoad, checkForShowImport, importShow: handleShowImport } = showImport
-
-const roomManagement = useRoomManagement()
-const { suppressAutoJoin, generateRoomCodeForCouch, generateRoomCodeForPCMultiplayer, joinByCode, tryJoinFromHash } = roomManagement
-
-const navigation = useAppNavigation(
-  currentView,
-  gameMode,
-  gameOptions,
-  roomManagement,
-  tutorialStep
-)
-const {
-  goToStart: goToStartBase,
-  goToModeSelection,
-  goBackToModeSelection,
-  goToJoinRoom,
-  handleStartFromHome: handleStartFromHomeBase,
-  selectGameMode,
-  startGameFromSettings,
-  startGameFromWaitingRoom,
-  handleCustomGameStart,
-  switchToGame,
-  onFinishShow,
-} = navigation
-
-// Enhanced handleStartFromHome that handles openBrowserOnLoad
-function handleStartFromHome(payload: unknown): void {
-  handleStartFromHomeBase(payload, openBrowserOnLoad)
-}
-
-// Enhanced goToStart that also resets tutorial
-function goToStart(): void {
-  goToStartBase()
-  resetTutorial()
-}
-
-// Enhanced jumpToTutorialStep that handles view changes
-function jumpToTutorialStepWithView(step: number): void {
-  jumpToTutorialStep(step, currentView)
-}
-
-// Enhanced startTutorialFromHowToPlay
-function startTutorialFromHowToPlayWrapper(): void {
-  showHowToPlay.value = false
-  startTutorialFromHowToPlay()
-}
-
-// Computed properties
+// Background
 const bgUrl = computed(() => {
   try {
     const bs = useBackgroundStore()
     return bs.currentUrl || ''
-  } catch (err) {
-    warn('Failed to get background URL', { error: err })
+  } catch {
     return ''
   }
 })
 
-// Watch currentView for CRT channel change event
+// First load detection
+const STORAGE_KEY_RULES = 'hasSeenRulebook'
+const STORAGE_KEY_SHOWS = 'hasSeenShowBuilder'
+
+function checkFirstLoad(): void {
+  const hasSeen = localStorage.getItem(STORAGE_KEY_RULES)
+  if (!hasSeen) {
+    showRulebook.value = true
+  }
+  hasSeenShowBuilder.value = localStorage.getItem(STORAGE_KEY_SHOWS) === 'true'
+}
+
+function closeRulebook(): void {
+  showRulebook.value = false
+  localStorage.setItem(STORAGE_KEY_RULES, 'true')
+}
+
+function markShowBuilderSeen(): void {
+  hasSeenShowBuilder.value = true
+  localStorage.setItem(STORAGE_KEY_SHOWS, 'true')
+}
+
+// Navigation
+function goToStart(): void {
+  currentView.value = 'start'
+  gameMode.value = null
+  gameOptions.value = {} as GameOptions
+}
+
+function handleStartGame(payload: { action: string; mode: string }): void {
+  debug('handleStartGame', payload)
+  currentView.value = 'mode-selection'
+}
+
+function selectGameMode(mode: GameMode): void {
+  debug('selectGameMode', { mode: mode.id })
+  gameMode.value = {
+    ...mode,
+    title: mode.title || mode.name
+  }
+  currentView.value = 'settings'
+}
+
+function startGame(options: GameOptions): void {
+  debug('startGame', { options })
+  gameOptions.value = options
+  currentView.value = 'game'
+}
+
+function handleCustomGameStart(data: { mode: GameMode; options: GameOptions }): void {
+  debug('handleCustomGameStart', data)
+  gameMode.value = data.mode
+  gameOptions.value = data.options
+  currentView.value = 'game'
+}
+
+function onFinishShow(): void {
+  currentView.value = 'custom-mode'
+}
+
+// Channel change effect
 watch(currentView, () => {
   nextTick(() => {
     try {
       window.dispatchEvent(new CustomEvent('crt-channel-change'))
-    } catch (err) {
-      warn('Failed to dispatch crt-channel-change event', { error: err })
-    }
+    } catch { /* ignore */ }
   })
 })
 
-// Mounted lifecycle
+// Mounted
 onMounted(() => {
-  debug('App.vue mounted', { currentView: currentView.value, hash: window.location.hash })
+  debug('App mounted', { view: currentView.value })
   
-  // Check for show import from URL
-  checkForShowImport((showData: unknown) => {
-    handleShowImport(showData, currentView, customModePanelRef as { value?: { importShowFromUrl?: (data: unknown) => void } } | null)
-  })
-  
-  // Auto-join game if URL has a room code
-  // Check for password reset flow
+  // Check for password reset
   const hash = window.location.hash || ''
   if (hash.includes('reset-password') || hash.includes('type=recovery') || hash.includes('access_token')) {
-    debug('Detected password reset flow', { hash })
-    currentView.value = 'reset-password' as ViewName
+    currentView.value = 'reset-password'
     return
   }
-
-  const handleTryJoinFromHash = async () => {
-    await tryJoinFromHash(currentView, gameMode, gameOptions, config)
-  }
   
-  handleTryJoinFromHash()
-  window.addEventListener('hashchange', handleTryJoinFromHash)
+  // Check first load (show rulebook)
+  checkFirstLoad()
   
-  window.addEventListener('app:navigate', (e: Event) => {
-    const customEvent = e as CustomEvent<{ to: string }>
-    const to = customEvent?.detail?.to || ''
-    if (to === 'controller') currentView.value = 'controller'
+  // Check for show import
+  checkForShowImport((showData: unknown) => {
+    importShow(showData, currentView as { value: string }, customModePanelRef)
   })
   
-  // Initialize background store
-      try {
-        const bs = useBackgroundStore()
-    bs.init('default').then(() => {
-      bgReady.value = bs.ready
-    }).catch((err) => {
-      logError('Failed to initialize background store', { error: err })
+  // Init background
+  try {
+    const bs = useBackgroundStore()
+    bs.init('default').catch((err) => {
+      logError('Failed to init background', { error: err })
     })
-  } catch (err) {
-    logError('Error accessing background store', { error: err })
-  }
+  } catch { /* ignore */ }
 })
 </script>
 
 <style>
-/* Minimal global styles only */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background: #000;
-}
-
-#app {
-  height: 100vh;
-  width: 100vw;
-  background: #000;
-}
-.app-bg { position: fixed; inset: 0; z-index: 0; }
-.app-bg-image { position: absolute; inset: 0; background-size: cover; background-position: center; transition: background-image 0.5s ease, opacity 0.5s ease; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { margin: 0; padding: 0; overflow: hidden; background: #000; }
+#app { height: 100vh; width: 100vw; background: #000; }
+.app-bg { position: fixed; inset: 0; z-index: 0; background-size: cover; background-position: center; }
+.app-bg-image { position: absolute; inset: 0; background-size: cover; background-position: center; transition: background-image 0.5s ease; }
 #app > *:not(.app-bg) { position: relative; z-index: 1; }
-.app-bg { background-size: cover; background-position: center; background-repeat: no-repeat; }
-.view-fade-enter-active, .view-fade-leave-active { transition: opacity 300ms ease-in-out; }
-.view-fade-enter-from, .view-fade-leave-to { opacity: 0; }
-
-.loading-controller {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  font-family: 'Arial', sans-serif;
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-top: 4px solid white;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 20px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
 </style>

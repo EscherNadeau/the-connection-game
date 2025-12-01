@@ -28,17 +28,11 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
-    /**
-     * Get display name (username or email)
-     */
     displayName(): string {
       if (!this.user) return 'Guest'
       return this.user.displayName || this.user.username || this.user.email.split('@')[0]
     },
 
-    /**
-     * Get user initials for avatar
-     */
     initials(): string {
       const name = this.displayName
       if (!name || name === 'Guest') return 'G'
@@ -50,9 +44,6 @@ export const useAuthStore = defineStore('auth', {
         .slice(0, 2)
     },
 
-    /**
-     * Check if auth service is available
-     */
     isAvailable(): boolean {
       return authService.isAvailable()
     },
@@ -60,7 +51,7 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     /**
-     * Initialize auth state
+     * Initialize auth state - MUST be called on app start
      */
     async initialize(): Promise<void> {
       if (this.isInitialized) return
@@ -68,7 +59,6 @@ export const useAuthStore = defineStore('auth', {
       try {
         this.isLoading = true
         
-        // Check if auth is available
         if (!authService.isAvailable()) {
           debug('Auth store: Running in offline mode')
           this.isLoading = false
@@ -76,11 +66,19 @@ export const useAuthStore = defineStore('auth', {
           return
         }
 
-        // Get initial state from auth service
+        // IMPORTANT: Wait for AuthService to fully initialize first
+        await authService.waitForInit()
+
+        // Now get the state (session should be restored)
         const state = authService.getState()
         this.updateFromAuthState(state)
 
-        // Subscribe to auth changes
+        debug('Auth store: Initialized', { 
+          isAuthenticated: this.isAuthenticated,
+          userId: this.user?.id 
+        })
+
+        // Subscribe to future auth changes
         authService.onAuthStateChange((event, session) => {
           debug('Auth store: Auth state changed', { event })
           this.handleAuthChange(event, session)
@@ -95,12 +93,11 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    /**
-     * Handle auth state changes
-     */
     handleAuthChange(event: string, session: Session | null): void {
       switch (event) {
         case 'SIGNED_IN':
+        case 'TOKEN_REFRESHED':
+        case 'INITIAL_SESSION':
           if (session?.user) {
             this.user = {
               id: session.user.id,
@@ -124,12 +121,6 @@ export const useAuthStore = defineStore('auth', {
           this.error = null
           break
 
-        case 'TOKEN_REFRESHED':
-          if (session) {
-            this.session = session
-          }
-          break
-
         case 'USER_UPDATED':
           if (session?.user) {
             this.user = {
@@ -145,9 +136,6 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    /**
-     * Update store from auth state
-     */
     updateFromAuthState(state: AuthState): void {
       this.user = state.user
       this.session = state.session
@@ -156,9 +144,6 @@ export const useAuthStore = defineStore('auth', {
       this.error = state.error
     },
 
-    /**
-     * Sign up with email and password
-     */
     async signUp(email: string, password: string, options?: { username?: string; displayName?: string }): Promise<boolean> {
       this.isLoading = true
       this.error = null
@@ -175,24 +160,19 @@ export const useAuthStore = defineStore('auth', {
           this.user = result.user
           this.session = result.session || null
           this.isAuthenticated = true
-          debug('Auth store: Sign up successful')
           return true
         }
 
         this.error = result.error || 'Sign up failed'
         return false
       } catch (err) {
-        warn('Auth store: Sign up error', { error: err })
-        this.error = 'An unexpected error occurred'
+        this.error = 'Sign up failed. Please try again.'
         return false
       } finally {
         this.isLoading = false
       }
     },
 
-    /**
-     * Sign in with email and password
-     */
     async signIn(email: string, password: string): Promise<boolean> {
       this.isLoading = true
       this.error = null
@@ -204,163 +184,111 @@ export const useAuthStore = defineStore('auth', {
           this.user = result.user
           this.session = result.session || null
           this.isAuthenticated = true
-          debug('Auth store: Sign in successful')
           return true
         }
 
         this.error = result.error || 'Sign in failed'
         return false
       } catch (err) {
-        warn('Auth store: Sign in error', { error: err })
-        this.error = 'An unexpected error occurred'
+        this.error = 'Sign in failed. Please try again.'
         return false
       } finally {
         this.isLoading = false
       }
     },
 
-    /**
-     * Sign in with OAuth provider
-     */
     async signInWithProvider(provider: Provider): Promise<boolean> {
       this.isLoading = true
       this.error = null
 
       try {
         const result = await authService.signInWithProvider(provider)
-
-        if (result.success) {
-          // OAuth redirects, so we don't update state here
-          return true
+        if (!result.success) {
+          this.error = result.error || 'Sign in failed'
+          return false
         }
-
-        this.error = result.error || 'OAuth sign in failed'
-        return false
+        return true
       } catch (err) {
-        warn('Auth store: OAuth error', { error: err })
-        this.error = 'An unexpected error occurred'
+        this.error = 'Sign in failed. Please try again.'
         return false
       } finally {
         this.isLoading = false
       }
     },
 
-    /**
-     * Sign out
-     */
     async signOut(): Promise<boolean> {
       this.isLoading = true
       this.error = null
 
       try {
         const result = await authService.signOut()
-
         if (result.success) {
           this.user = null
           this.session = null
           this.isAuthenticated = false
-          debug('Auth store: Sign out successful')
           return true
         }
-
         this.error = result.error || 'Sign out failed'
         return false
       } catch (err) {
-        warn('Auth store: Sign out error', { error: err })
-        this.error = 'An unexpected error occurred'
+        this.error = 'Sign out failed. Please try again.'
         return false
       } finally {
         this.isLoading = false
       }
     },
 
-    /**
-     * Request password reset
-     */
     async resetPassword(email: string): Promise<boolean> {
       this.isLoading = true
       this.error = null
 
       try {
         const result = await authService.resetPassword(email)
-
-        if (result.success) {
-          debug('Auth store: Password reset email sent')
-          return true
+        if (!result.success) {
+          this.error = result.error || 'Failed to send reset email'
+          return false
         }
-
-        this.error = result.error || 'Password reset failed'
-        return false
-      } catch (err) {
-        warn('Auth store: Password reset error', { error: err })
-        this.error = 'An unexpected error occurred'
-        return false
+        return true
       } finally {
         this.isLoading = false
       }
     },
 
-    /**
-     * Update password
-     */
     async updatePassword(newPassword: string): Promise<boolean> {
       this.isLoading = true
       this.error = null
 
       try {
         const result = await authService.updatePassword(newPassword)
-
-        if (result.success) {
-          debug('Auth store: Password updated')
-          return true
+        if (!result.success) {
+          this.error = result.error || 'Failed to update password'
+          return false
         }
-
-        this.error = result.error || 'Password update failed'
-        return false
-      } catch (err) {
-        warn('Auth store: Password update error', { error: err })
-        this.error = 'An unexpected error occurred'
-        return false
+        return true
       } finally {
         this.isLoading = false
       }
     },
 
-    /**
-     * Update user profile
-     */
     async updateProfile(updates: { username?: string; displayName?: string; avatarUrl?: string }): Promise<boolean> {
-      this.isLoading = true
       this.error = null
 
       try {
         const result = await authService.updateProfile(updates)
-
         if (result.success && result.user) {
           this.user = result.user
-          debug('Auth store: Profile updated')
           return true
         }
-
-        this.error = result.error || 'Profile update failed'
+        this.error = result.error || 'Failed to update profile'
         return false
       } catch (err) {
-        warn('Auth store: Profile update error', { error: err })
-        this.error = 'An unexpected error occurred'
+        this.error = 'Failed to update profile. Please try again.'
         return false
-      } finally {
-        this.isLoading = false
       }
     },
 
-    /**
-     * Clear error
-     */
     clearError(): void {
       this.error = null
     },
   },
 })
-
-export default useAuthStore
-

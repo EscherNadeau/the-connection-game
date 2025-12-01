@@ -1,20 +1,12 @@
 <template>
   <div class="game-screen" :class="{ 
-    'tutorial-step-22': showTutorial && tutorialStep === 22,
-    'tutorial-step-25': showTutorial && tutorialStep === 25,
-    'tutorial-step-26': showTutorial && tutorialStep === 26,
-    'tutorial-step-26.5': showTutorial && tutorialStep === 26.5,
-    'tutorial-step-26.6': showTutorial && tutorialStep === 26.6,
-    'tutorial-step-27': showTutorial && tutorialStep === 27
+    
+    
+    
+    
+    
+    
   }">
-    <!-- Tutorial Overlay -->
-    <TutorialOverlay
-      :show-tutorial="showTutorial"
-      :tutorial-step="tutorialStep"
-      :result-modal-visible="resultModal.visible"
-      @tutorial-next="$emit('tutorial-next')"
-      @open-win-modal="openWinModal"
-      @return-to-start="returnToStart"
     />
 
     <GameHeader
@@ -41,7 +33,7 @@
         :current-goal-index="gameOptions.currentGoalIndex || 0"
         :game-type="gameOptions.gameType || gameMode.id"
         :is-pvp-mode="isPvPMode(gameOptions)"
-        :class="{ 'tutorial-glow': showTutorial && (tutorialStep === 23 || tutorialStep === 24) }"
+        
         @connection-created="onConnectionCreated"
         @check-goals="onCheckGoals"
         @goal-completed="onGoalCompleted"
@@ -93,8 +85,6 @@
       ref="gameSearchPanel"
       :game-mode="gameMode"
       :game-options="gameOptions"
-      :show-tutorial="showTutorial"
-      :tutorial-step="tutorialStep"
       @item-added="onItemAdded"
       @connection-created="onConnectionCreated"
       @show-error="onShowError"
@@ -109,7 +99,6 @@ import GameBoard from '../components/GameBoard.vue'
 import NotifyBanner from '../components/UI/NotifyBanner.vue'
 import WinLoseModal from '../components/UI/WinLoseModal.vue'
 import UnifiedPopup from '../components/UI/UnifiedPopup.vue'
-import TutorialOverlay from '../components/TutorialOverlay.vue'
 import GameSearchPanel from '../components/GameSearchPanel.vue'
 import GameHeader from '../components/UI/GameHeader.vue'
 import BoardShell from '../components/BoardShell.vue'
@@ -129,14 +118,14 @@ import { debug, warn, error as logError } from '../services/ui/log.ts'
 
 export default {
   name: 'GameView',
-  components: { GameBoard, NotifyBanner, WinLoseModal, UnifiedPopup, TutorialOverlay, GameSearchPanel, GameHeader, BoardShell },
+  components: { GameBoard, NotifyBanner, WinLoseModal, UnifiedPopup, GameSearchPanel, GameHeader, BoardShell },
   props: {
     gameMode: { type: Object, required: true },
     gameOptions: { type: Object, default: () => ({}) },
-    showTutorial: { type: Boolean, default: false },
-    tutorialStep: { type: Number, default: 0 },
+    
+    
   },
-  emits: ['tutorial-next', 'back-to-mode-selection', 'tutorial-start', 'back-to-start', 'tutorial-completed', 'goal-completed'],
+  emits: ['back-to-mode-selection', 'back-to-start', 'goal-completed'],
   setup() {
     const gs = useGameStateStore()
     const { timerEnabled, timerRemaining } = storeToRefs(gs)

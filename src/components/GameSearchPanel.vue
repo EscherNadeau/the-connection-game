@@ -5,7 +5,6 @@
     :disabled="false"
     :autofocus="true"
     :getType="getDisplayType"
-    :class="{ 'tutorial-glow': showTutorial && tutorialStep === 21 }"
     @input-keyup="handleSearchInput"
     @select="selectSearchResult"
     @clear="clearSearch"
