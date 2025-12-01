@@ -44,7 +44,7 @@ class ImageUploadService {
 
       debug(`Uploading ${type} for user ${userId}`, { fileName, size: file.size })
 
-      // Delete old image first (optional, to save space)
+      // Delete old image first
       await this.deleteOldImages(userId, type)
 
       // Upload new image
@@ -83,11 +83,7 @@ class ImageUploadService {
 
     try {
       const bucket = type === 'avatar' ? 'avatars' : 'banners'
-      
-      // List files in user's folder
-      const { data: files } = await client.storage
-        .from(bucket)
-        .list(userId)
+      const { data: files } = await client.storage.from(bucket).list(userId)
 
       if (files && files.length > 0) {
         const filesToDelete = files
@@ -96,11 +92,9 @@ class ImageUploadService {
 
         if (filesToDelete.length > 0) {
           await client.storage.from(bucket).remove(filesToDelete)
-          debug(`Deleted ${filesToDelete.length} old ${type}(s)`)
         }
       }
     } catch (err) {
-      // Non-critical, just log
       debug(`Could not delete old ${type}s`, { error: err })
     }
   }
@@ -109,18 +103,9 @@ class ImageUploadService {
    * Validate file before upload
    */
   private validateFile(file: File): { valid: boolean; error?: string } {
-    if (!file) {
-      return { valid: false, error: 'No file selected' }
-    }
-
-    if (file.size > this.MAX_FILE_SIZE) {
-      return { valid: false, error: 'Image must be less than 5MB' }
-    }
-
-    if (!this.ALLOWED_TYPES.includes(file.type)) {
-      return { valid: false, error: 'Only JPEG, PNG, GIF, and WebP images are allowed' }
-    }
-
+    if (!file) return { valid: false, error: 'No file selected' }
+    if (file.size > this.MAX_FILE_SIZE) return { valid: false, error: 'Image must be less than 5MB' }
+    if (!this.ALLOWED_TYPES.includes(file.type)) return { valid: false, error: 'Only JPEG, PNG, GIF, and WebP allowed' }
     return { valid: true }
   }
 
@@ -133,20 +118,29 @@ class ImageUploadService {
     url: string
   ): Promise<{ success: boolean; error?: string }> {
     const client = getSupabaseClient()
-    if (!client) {
-      return { success: false, error: 'Database not available' }
-    }
+    if (!client) return { success: false, error: 'Database not available' }
 
     try {
       const field = type === 'avatar' ? 'avatar_url' : 'banner_url'
       
-      const { error } = await client
+      // Update users table
+      const { error: dbError } = await client
         .from('users')
         .update({ [field]: url, updated_at: new Date().toISOString() })
         .eq('id', userId)
 
-      if (error) {
-        return { success: false, error: error.message }
+      if (dbError) {
+        return { success: false, error: dbError.message }
+      }
+
+      // For avatar, also update auth user metadata so it shows everywhere
+      if (type === 'avatar') {
+        const { error: authError } = await client.auth.updateUser({
+          data: { avatar_url: url }
+        })
+        if (authError) {
+          warn('Failed to update auth metadata with avatar', { error: authError })
+        }
       }
 
       return { success: true }
@@ -163,14 +157,12 @@ class ImageUploadService {
     userId: string,
     type: ImageType
   ): Promise<UploadResult> {
-    // Upload the image
     const uploadResult = await this.uploadImage(file, userId, type)
     
     if (!uploadResult.success || !uploadResult.url) {
       return uploadResult
     }
 
-    // Update user profile
     const updateResult = await this.updateUserImage(userId, type, uploadResult.url)
     
     if (!updateResult.success) {
