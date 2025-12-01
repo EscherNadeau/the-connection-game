@@ -116,7 +116,12 @@
               />
             </div>
             <div class="form-group">
-              <label for="register-password">Password</label>
+              <div class="label-row">
+                <label for="register-password">Password</label>
+                <button type="button" class="info-btn" @click="showPasswordInfo = !showPasswordInfo" title="Password requirements">
+                  ℹ️
+                </button>
+              </div>
               <input 
                 id="register-password"
                 v-model="registerPassword"
@@ -126,6 +131,19 @@
                 minlength="6"
                 autocomplete="new-password"
               />
+              <Transition name="fade">
+                <div v-if="showPasswordInfo" class="password-info">
+                  <p class="info-title">🔐 Password "Requirements"</p>
+                  <p>Look, I don't really care what your password is.</p>
+                  <p>If it sucks and you get hacked on a <em>movie trivia game</em>... I mean:</p>
+                  <ol>
+                    <li>Why would anyone hack this? 🤔</li>
+                    <li>What are they gonna steal? Your high score? 🏆</li>
+                    <li>That's on you, friend. 🤷</li>
+                  </ol>
+                  <p class="info-footer">Just make it 6+ characters so Supabase doesn't yell at me.</p>
+                </div>
+              </Transition>
             </div>
             <div class="form-group">
               <label for="register-confirm">Confirm Password</label>
@@ -200,6 +218,7 @@ const registerPassword = ref('')
 const registerConfirm = ref('')
 const resetEmail = ref('')
 const successMessage = ref('')
+const showPasswordInfo = ref(false)
 
 // Remember me state - defaults to true
 const rememberMe = ref(true)
@@ -220,6 +239,7 @@ watch(() => props.isOpen, (isOpen) => {
     clearError()
     localError.value = ''
     successMessage.value = ''
+    showPasswordInfo.value = false
     // Refresh remember me state when modal opens
     rememberMe.value = isRememberMeEnabled()
   } else {
@@ -232,6 +252,7 @@ watch(() => props.isOpen, (isOpen) => {
     registerConfirm.value = ''
     resetEmail.value = ''
     activeTab.value = 'login'
+    showPasswordInfo.value = false
   }
 })
 
@@ -240,6 +261,7 @@ watch(activeTab, () => {
   clearError()
   localError.value = ''
   successMessage.value = ''
+  showPasswordInfo.value = false
 })
 
 const closeModal = () => {
@@ -326,6 +348,8 @@ const handleResetPassword = async () => {
   padding: 2rem;
   width: 100%;
   max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
   position: relative;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -434,10 +458,71 @@ const handleResetPassword = async () => {
   gap: 0.375rem;
 }
 
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .form-group label {
   color: rgba(255, 255, 255, 0.8);
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+.info-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.info-btn:hover {
+  opacity: 1;
+}
+
+.password-info {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.password-info p {
+  margin: 0 0 0.5rem;
+}
+
+.password-info .info-title {
+  font-weight: 600;
+  color: #f59e0b;
+  margin-bottom: 0.75rem;
+}
+
+.password-info ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.password-info li {
+  margin: 0.25rem 0;
+}
+
+.password-info em {
+  color: #e94560;
+}
+
+.password-info .info-footer {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
 }
 
 .form-group input {
@@ -583,6 +668,16 @@ const handleResetPassword = async () => {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* Fade transition for password info */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
 /* Modal transitions */

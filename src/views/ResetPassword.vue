@@ -27,6 +27,22 @@
         <button class="action-btn primary" @click="goToStart">Go to Home</button>
       </div>
 
+      <!-- Same Password State (funny) -->
+      <div v-else-if="samePassword" class="same-password-state">
+        <div class="same-icon">🎉</div>
+        <p class="same-title">Congratulations!</p>
+        <p class="same-message">You've successfully remembered your current password!</p>
+        <p class="same-hint">That's... that's what you already had. 🤦</p>
+        <div class="same-warning">
+          <p>Also, quick thought: if you're resetting because someone hacked you...</p>
+          <p><strong>maybe pick a DIFFERENT password?</strong> Just a suggestion. 🔒</p>
+        </div>
+        <div class="same-actions">
+          <button class="action-btn" @click="samePassword = false">Try Again (Different Password)</button>
+          <button class="action-btn secondary" @click="goToStart">Keep My Amazing Password</button>
+        </div>
+      </div>
+
       <!-- Password Form -->
       <form v-else class="reset-form" @submit.prevent="handleSubmit">
         <div class="form-group">
@@ -83,6 +99,7 @@ const isLoading = ref(true)
 const isSubmitting = ref(false)
 const error = ref('')
 const success = ref(false)
+const samePassword = ref(false)
 const formError = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
@@ -92,12 +109,12 @@ const subtitle = computed(() => {
   if (isLoading.value) return 'Verifying your reset link...'
   if (error.value) return 'Something went wrong'
   if (success.value) return 'All done!'
+  if (samePassword.value) return 'Well, this is awkward...'
   return 'Enter your new password below'
 })
 
 onMounted(async () => {
   // Check if we have a valid recovery session from Supabase
-  // Supabase automatically handles the token in the URL hash
   const client = getSupabaseClient()
   
   if (!client) {
@@ -150,6 +167,7 @@ onMounted(async () => {
 
 const handleSubmit = async () => {
   formError.value = ''
+  samePassword.value = false
   
   // Validation
   if (newPassword.value.length < 6) {
@@ -177,6 +195,17 @@ const handleSubmit = async () => {
     
     if (updateError) {
       console.error('Password update error:', updateError)
+      
+      // Check if it's the "same password" error
+      const errorMsg = updateError.message?.toLowerCase() || ''
+      if (errorMsg.includes('same') || errorMsg.includes('different') || errorMsg.includes('previously used')) {
+        samePassword.value = true
+        newPassword.value = ''
+        confirmPassword.value = ''
+        isSubmitting.value = false
+        return
+      }
+      
       formError.value = updateError.message || 'Failed to update password'
       isSubmitting.value = false
       return
@@ -298,6 +327,67 @@ const goToStart = () => {
   font-size: 0.9rem;
 }
 
+/* Same Password State (funny) */
+.same-password-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  text-align: center;
+}
+
+.same-icon {
+  font-size: 3rem;
+}
+
+.same-title {
+  color: #fbbf24;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.same-message {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.same-hint {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+  font-style: italic;
+  margin: 0;
+}
+
+.same-warning {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  text-align: left;
+}
+
+.same-warning p {
+  margin: 0 0 0.5rem;
+  color: #fca5a5;
+  font-size: 0.9rem;
+}
+
+.same-warning p:last-child {
+  margin-bottom: 0;
+}
+
+.same-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
 /* Form */
 .reset-form {
   display: flex;
@@ -396,6 +486,18 @@ const goToStart = () => {
 .action-btn.primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+}
+
+.action-btn.secondary {
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.action-btn.secondary:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: white;
 }
 
 .back-link {
