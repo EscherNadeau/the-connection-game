@@ -6,7 +6,7 @@
     
     <!-- Start Screen -->
     <template v-if="currentView === 'start'">
-      <Home 
+      <Home :show-tutorial="false" :tutorial-step="0" :tutorial-just-completed="false" 
         @start-game="handleStartGame" 
         @how-to-play="showRulebook = true"
         @open-profile-page="currentView = 'profile'"
@@ -16,7 +16,7 @@
     
     <!-- Mode Selection -->
     <template v-else-if="currentView === 'mode-selection'">
-      <ModeSelection 
+      <ModeSelection :show-tutorial="false" :tutorial-step="0" 
         @back-to-start="goToStart" 
         @mode-selected="selectGameMode"
       />
@@ -24,7 +24,7 @@
     
     <!-- Settings Screen -->
     <template v-else-if="currentView === 'settings' && gameMode">
-      <SettingsScreen 
+      <SettingsScreen :show-tutorial="false" :tutorial-step="0" 
         :mode="gameMode" 
         @start-game="startGame" 
         @go-back="currentView = 'mode-selection'"
@@ -33,7 +33,7 @@
     
     <!-- Game -->
     <template v-else-if="currentView === 'game' && gameMode">
-      <Game 
+      <Game :show-tutorial="false" :tutorial-step="0" 
         :gameMode="gameMode" 
         :gameOptions="gameOptions" 
         @back-to-start="goToStart"
