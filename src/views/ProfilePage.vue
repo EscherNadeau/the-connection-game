@@ -82,49 +82,45 @@
         </div>
       </div>
 
-      <!-- Main Grid -->
-      <div class="main-grid">
-        <!-- Left: Favorites -->
-        <div class="favorites-section">
-          <h2 class="section-title">
-            <span class="section-icon">⭐</span>
-            Favorite 4
-          </h2>
-          <div class="favorites-grid">
-            <div 
-              v-for="(fav, index) in paddedFavorites" 
-              :key="index"
-              :class="['favorite-card', { empty: !fav }]"
-              @click="!fav && isOwnProfile && openFavoriteSearch(index)"
-            >
-              <template v-if="fav">
-                <img v-if="fav.image" :src="getImageUrl(fav.image)" :alt="fav.name" class="fav-image" />
-                <div v-else class="fav-placeholder">{{ getTypeIcon(fav.type) }}</div>
-                <div class="fav-info">
-                  <span class="fav-name">{{ fav.name }}</span>
-                  <span class="fav-type">{{ fav.type }}</span>
-                </div>
-                <button v-if="isOwnProfile" class="fav-remove" @click.stop="removeFavorite(index)">✕</button>
-              </template>
-              <template v-else>
-                <div class="empty-fav">
-                  <span class="empty-plus">+</span>
-                  <span class="empty-text">Add favorite</span>
-                </div>
-              </template>
-            </div>
+      <!-- Favorites Row -->
+      <div class="favorites-section">
+        <h2 class="section-title">
+          <span class="section-icon">⭐</span>
+          Favorite 4
+        </h2>
+        <div class="favorites-row">
+          <div 
+            v-for="(fav, index) in paddedFavorites" 
+            :key="index"
+            :class="['favorite-card', { empty: !fav }]"
+            @click="!fav && isOwnProfile && openFavoriteSearch(index)"
+          >
+            <template v-if="fav">
+              <img v-if="fav.image" :src="getImageUrl(fav.image)" :alt="fav.name" class="fav-image" />
+              <div v-else class="fav-placeholder">{{ getTypeIcon(fav.type) }}</div>
+              <div class="fav-info">
+                <span class="fav-name">{{ fav.name }}</span>
+              </div>
+              <button v-if="isOwnProfile" class="fav-remove" @click.stop="removeFavorite(index)">✕</button>
+            </template>
+            <template v-else>
+              <div class="empty-fav">
+                <span class="empty-plus">+</span>
+              </div>
+            </template>
           </div>
         </div>
+      </div>
 
-        <!-- Right: Level Progress + Snarky Comment -->
-        <div class="progress-section">
-          <h2 class="section-title">
+      <!-- Bottom Grid -->
+      <div class="bottom-grid">
+        <!-- Level Progress -->
+        <div class="level-card">
+          <div class="level-header">
             <span class="section-icon">📈</span>
-            Progress
-          </h2>
-          
-          <!-- Level Card -->
-          <div class="level-card">
+            <span>Progress</span>
+          </div>
+          <div class="level-content">
             <div class="level-top">
               <span class="current-level">Level {{ playerLevel.level }}</span>
               <span class="next-level" v-if="playerLevel.nextLevelAt">→ {{ playerLevel.nextLevelAt }} games</span>
@@ -134,64 +130,65 @@
               <div class="level-fill" :style="{ width: playerLevel.progress + '%' }"></div>
               <div class="level-glow" :style="{ left: playerLevel.progress + '%' }"></div>
             </div>
-            <div class="level-bottom">
-              <span>{{ profile?.total_games_played || 0 }} games played</span>
-            </div>
+            <div class="level-bottom">{{ profile?.total_games_played || 0 }} games played</div>
           </div>
+        </div>
 
-          <!-- Snarky Comment -->
-          <div class="snark-card">
-            <div class="snark-icon">💬</div>
-            <p class="snark-text">{{ statsComment }}</p>
+        <!-- Snarky Comment -->
+        <div class="snark-card">
+          <div class="snark-icon">💬</div>
+          <p class="snark-text">{{ statsComment }}</p>
+        </div>
+
+        <!-- Member Since -->
+        <div class="member-card">
+          <span class="member-icon">📅</span>
+          <span class="member-text">Playing since {{ memberSince }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search Modal for Favorites -->
+    <Teleport to="body">
+      <div v-if="showFavoriteSearch" class="search-modal" @click.self="closeFavoriteSearch">
+        <div class="search-content">
+          <div class="search-header">
+            <input 
+              ref="searchInput"
+              v-model="searchQuery"
+              @input="handleSearch"
+              placeholder="Search movies, shows, people..."
+              class="search-input"
+            />
+            <button class="search-close" @click="closeFavoriteSearch">✕</button>
           </div>
-
-          <!-- Member Since -->
-          <div class="member-card">
-            <span class="member-icon">📅</span>
-            <span class="member-text">Playing since {{ memberSince }}</span>
+          <div v-if="isSearching" class="search-loading">
+            <div class="search-spinner"></div>
+          </div>
+          <div v-else-if="searchResults.length > 0" class="search-results">
+            <button 
+              v-for="item in searchResults" 
+              :key="`${item.type}-${item.id}`"
+              class="search-result"
+              @click="selectFavorite(item)"
+            >
+              <img v-if="item.image" :src="getImageUrl(item.image)" :alt="item.name" class="result-img" />
+              <div v-else class="result-placeholder">{{ getTypeIcon(item.type) }}</div>
+              <div class="result-info">
+                <span class="result-name">{{ item.name }}</span>
+                <span class="result-type">{{ item.type }}{{ item.year ? ` • ${item.year}` : '' }}</span>
+              </div>
+            </button>
+          </div>
+          <div v-else-if="searchQuery.length > 1 && !isSearching" class="search-empty">
+            No results found
+          </div>
+          <div v-else class="search-hint">
+            Type to search...
           </div>
         </div>
       </div>
-
-      <!-- Search Modal for Favorites -->
-      <Teleport to="body">
-        <div v-if="showFavoriteSearch" class="search-modal" @click.self="closeFavoriteSearch">
-          <div class="search-content">
-            <div class="search-header">
-              <input 
-                ref="searchInput"
-                v-model="searchQuery"
-                @input="handleSearch"
-                placeholder="Search movies, shows, people..."
-                class="search-input"
-              />
-              <button class="search-close" @click="closeFavoriteSearch">✕</button>
-            </div>
-            <div v-if="isSearching" class="search-loading">
-              <div class="search-spinner"></div>
-            </div>
-            <div v-else-if="searchResults.length > 0" class="search-results">
-              <button 
-                v-for="item in searchResults" 
-                :key="`${item.type}-${item.id}`"
-                class="search-result"
-                @click="selectFavorite(item)"
-              >
-                <img v-if="item.image" :src="getImageUrl(item.image)" :alt="item.name" class="result-img" />
-                <div v-else class="result-placeholder">{{ getTypeIcon(item.type) }}</div>
-                <div class="result-info">
-                  <span class="result-name">{{ item.name }}</span>
-                  <span class="result-type">{{ item.type }}{{ item.year ? ` • ${item.year}` : '' }}</span>
-                </div>
-              </button>
-            </div>
-            <div v-else-if="searchQuery.length > 1" class="search-empty">
-              No results found
-            </div>
-          </div>
-        </div>
-      </Teleport>
-    </div>
+    </Teleport>
 
     <!-- Upload Overlay -->
     <div v-if="isUploading" class="upload-overlay">
@@ -207,6 +204,7 @@ import { useAuth } from '../composables/useAuth'
 import { getSupabaseClient } from '../config/supabase'
 import { imageUploadService } from '../services/storage/ImageUploadService'
 import { getPlayerLevel, getWinRate, getStatsComment } from '../utils/levelSystem'
+import tmdbCache from '../services/cache/tmdbCache'
 
 interface UserProfile {
   id: string
@@ -317,7 +315,7 @@ const loadProfile = async () => {
     const { data } = await client.from('users').select('*').eq('id', targetId).single()
     if (data) profile.value = data as UserProfile
     
-    // Load favorites from localStorage for now (could be DB later)
+    // Load favorites from localStorage for now
     const savedFavs = localStorage.getItem(`favorites_${targetId}`)
     if (savedFavs) favorites.value = JSON.parse(savedFavs)
   } finally {
@@ -374,24 +372,33 @@ const handleSearch = () => {
   isSearching.value = true
   searchTimeout = setTimeout(async () => {
     try {
-      const { tmdbCache } = await import('../services/cache/tmdbCache')
+      console.log('Searching for:', searchQuery.value)
       const results = await tmdbCache.searchMulti(searchQuery.value)
-      searchResults.value = results.slice(0, 10).map((r: any) => ({
+      console.log('Search results:', results)
+      searchResults.value = (results || []).slice(0, 10).map((r: any) => ({
         id: r.id,
         name: r.title || r.name,
         type: r.media_type || (r.known_for_department ? 'person' : 'movie'),
         image: r.poster_path || r.profile_path,
         year: (r.release_date || r.first_air_date)?.slice(0, 4)
       }))
-    } catch { searchResults.value = [] }
+    } catch (err) {
+      console.error('Search error:', err)
+      searchResults.value = []
+    }
     isSearching.value = false
   }, 300)
 }
 
 const selectFavorite = (item: FavoriteItem) => {
   const newFavs = [...favorites.value]
-  newFavs[searchSlotIndex.value] = item
-  favorites.value = newFavs.filter(Boolean)
+  // Replace at slot or add to end
+  if (searchSlotIndex.value < newFavs.length) {
+    newFavs[searchSlotIndex.value] = item
+  } else {
+    newFavs.push(item)
+  }
+  favorites.value = newFavs.slice(0, 4)
   saveFavorites()
   closeFavoriteSearch()
 }
@@ -416,6 +423,7 @@ onMounted(loadProfile)
 .profile-page {
   min-height: 100vh;
   position: relative;
+  overflow-y: auto;
   overflow-x: hidden;
 }
 
@@ -444,9 +452,9 @@ onMounted(loadProfile)
 .profile-container {
   position: relative;
   z-index: 1;
-  max-width: 1000px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 1rem 1rem 3rem;
 }
 
 .hidden-input { display: none; }
@@ -456,7 +464,7 @@ onMounted(loadProfile)
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .back-btn {
@@ -491,17 +499,18 @@ onMounted(loadProfile)
   display: flex;
   align-items: center;
   gap: 2rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 
 .avatar-container {
   position: relative;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .avatar-ring {
-  width: 140px;
-  height: 140px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   padding: 4px;
   background: linear-gradient(135deg, #e94560, #f59e0b, #6366f1, #e94560);
@@ -526,7 +535,7 @@ onMounted(loadProfile)
 }
 
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
-.avatar-initials { font-size: 3rem; font-weight: 700; color: white; }
+.avatar-initials { font-size: 2.5rem; font-weight: 700; color: white; }
 
 .avatar-edit {
   position: absolute;
@@ -536,7 +545,7 @@ onMounted(loadProfile)
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
+  font-size: 1.5rem;
   opacity: 0;
   transition: opacity 0.2s;
 }
@@ -545,10 +554,10 @@ onMounted(loadProfile)
 
 .level-orb {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 40px;
-  height: 40px;
+  bottom: -5px;
+  right: -5px;
+  width: 36px;
+  height: 36px;
   background: linear-gradient(135deg, #e94560, #c23a51);
   border: 3px solid #0d0d1a;
   border-radius: 50%;
@@ -556,19 +565,23 @@ onMounted(loadProfile)
   align-items: center;
   justify-content: center;
   font-weight: 800;
-  font-size: 1.1rem;
+  font-size: 1rem;
+  color: white;
 }
 
-.user-info { flex: 1; }
+.user-info { flex: 1; min-width: 0; }
 
 .username {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 800;
   margin: 0;
   background: linear-gradient(90deg, #fff 0%, #e94560 50%, #f59e0b 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .title-badge {
@@ -576,23 +589,24 @@ onMounted(loadProfile)
   align-items: center;
   gap: 0.5rem;
   background: rgba(255,255,255,0.1);
-  padding: 0.4rem 1rem;
+  padding: 0.3rem 0.75rem;
   border-radius: 2rem;
-  margin: 0.5rem 0;
+  margin: 0.4rem 0;
 }
 
-.title-emoji { font-size: 1.2rem; }
-.title-text { color: #f59e0b; font-weight: 600; }
+.title-emoji { font-size: 1rem; }
+.title-text { color: #f59e0b; font-weight: 600; font-size: 0.9rem; }
 
-.bio-section { margin-top: 1rem; }
+.bio-section { margin-top: 0.5rem; }
 
 .bio {
   color: rgba(255,255,255,0.6);
   cursor: pointer;
-  padding: 0.5rem;
+  padding: 0.3rem 0.5rem;
   border-radius: 0.5rem;
   transition: background 0.2s;
   margin: 0;
+  font-size: 0.9rem;
 }
 
 .bio:hover { background: rgba(255,255,255,0.05); }
@@ -602,9 +616,10 @@ onMounted(loadProfile)
   background: rgba(0,0,0,0.3);
   border: 1px solid rgba(255,255,255,0.2);
   border-radius: 0.5rem;
-  padding: 0.75rem;
+  padding: 0.5rem;
   color: white;
   resize: none;
+  font-size: 0.9rem;
 }
 
 .bio-actions {
@@ -614,11 +629,10 @@ onMounted(loadProfile)
 }
 
 .bio-actions button {
-  padding: 0.4rem 1rem;
+  padding: 0.3rem 0.75rem;
   border: none;
   border-radius: 0.25rem;
   cursor: pointer;
-  font-size: 1rem;
 }
 
 .bio-actions button:first-child { background: #e94560; color: white; }
@@ -627,58 +641,52 @@ onMounted(loadProfile)
 /* Stats Strip */
 .stats-strip {
   display: flex;
-  justify-content: center;
+  justify-content: space-around;
   align-items: center;
-  gap: 2rem;
   background: rgba(255,255,255,0.05);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 1rem;
-  padding: 1.5rem 2rem;
-  margin-bottom: 2rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
 }
 
-.stat-item { text-align: center; }
-.stat-value { display: block; font-size: 2rem; font-weight: 800; color: white; }
-.stat-label { font-size: 0.85rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; }
-.stat-divider { width: 1px; height: 40px; background: rgba(255,255,255,0.15); }
+.stat-item { text-align: center; flex: 1; }
+.stat-value { display: block; font-size: 1.5rem; font-weight: 800; color: white; }
+.stat-label { font-size: 0.75rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px; }
+.stat-divider { width: 1px; height: 30px; background: rgba(255,255,255,0.15); }
 
-/* Main Grid */
-.main-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
+/* Favorites Section */
+.favorites-section {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .section-title {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
-  margin: 0 0 1rem;
+  margin: 0 0 0.75rem;
   color: white;
 }
 
-.section-icon { font-size: 1.3rem; }
+.section-icon { font-size: 1.1rem; }
 
-/* Favorites */
-.favorites-section {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 1rem;
-  padding: 1.5rem;
-}
-
-.favorites-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+.favorites-row {
+  display: flex;
+  gap: 0.75rem;
 }
 
 .favorite-card {
+  flex: 1;
   aspect-ratio: 2/3;
-  border-radius: 0.75rem;
+  max-height: 150px;
+  border-radius: 0.5rem;
   overflow: hidden;
   position: relative;
   background: rgba(255,255,255,0.05);
@@ -686,31 +694,30 @@ onMounted(loadProfile)
   transition: all 0.2s;
 }
 
-.favorite-card:not(.empty):hover { transform: scale(1.02); }
+.favorite-card:not(.empty):hover { transform: scale(1.03); }
 .favorite-card.empty { cursor: pointer; border-style: dashed; }
 .favorite-card.empty:hover { background: rgba(255,255,255,0.08); }
 
 .fav-image { width: 100%; height: 100%; object-fit: cover; }
-.fav-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 3rem; background: rgba(255,255,255,0.05); }
+.fav-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2rem; background: rgba(255,255,255,0.05); }
 
 .fav-info {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 2rem 0.75rem 0.75rem;
+  padding: 1.5rem 0.5rem 0.4rem;
   background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
 }
 
-.fav-name { display: block; font-weight: 600; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.fav-type { font-size: 0.7rem; color: rgba(255,255,255,0.5); text-transform: capitalize; }
+.fav-name { display: block; font-weight: 600; font-size: 0.7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white; }
 
 .fav-remove {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  width: 24px;
-  height: 24px;
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: rgba(0,0,0,0.7);
   border: none;
@@ -718,6 +725,7 @@ onMounted(loadProfile)
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.2s;
+  font-size: 0.7rem;
 }
 
 .favorite-card:hover .fav-remove { opacity: 1; }
@@ -726,19 +734,17 @@ onMounted(loadProfile)
   width: 100%;
   height: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   color: rgba(255,255,255,0.4);
 }
 
-.empty-plus { font-size: 2rem; }
-.empty-text { font-size: 0.8rem; }
+.empty-plus { font-size: 1.5rem; }
 
-/* Progress Section */
-.progress-section {
-  display: flex;
-  flex-direction: column;
+/* Bottom Grid */
+.bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 1rem;
 }
 
@@ -746,12 +752,25 @@ onMounted(loadProfile)
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 1rem;
-  padding: 1.25rem;
+  padding: 1rem;
 }
 
-.level-top { display: flex; justify-content: space-between; margin-bottom: 0.75rem; }
+.level-card {
+  grid-column: 1 / -1;
+}
+
+.level-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: white;
+}
+
+.level-top { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem; }
 .current-level { font-weight: 700; color: white; }
-.next-level, .max-level { color: rgba(255,255,255,0.5); font-size: 0.9rem; }
+.next-level, .max-level { color: rgba(255,255,255,0.5); }
 .max-level { color: #f59e0b; }
 
 .level-bar {
@@ -780,26 +799,25 @@ onMounted(loadProfile)
   transform: translateX(-50%);
 }
 
-.level-bottom { margin-top: 0.5rem; font-size: 0.85rem; color: rgba(255,255,255,0.5); }
+.level-bottom { margin-top: 0.5rem; font-size: 0.8rem; color: rgba(255,255,255,0.5); }
 
 .snark-card {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   align-items: flex-start;
 }
 
-.snark-icon { font-size: 1.5rem; }
-.snark-text { margin: 0; color: rgba(255,255,255,0.7); font-style: italic; line-height: 1.5; }
+.snark-icon { font-size: 1.25rem; }
+.snark-text { margin: 0; color: rgba(255,255,255,0.7); font-style: italic; line-height: 1.4; font-size: 0.85rem; }
 
 .member-card {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 1rem 1.25rem;
+  gap: 0.5rem;
 }
 
-.member-icon { font-size: 1.2rem; }
-.member-text { color: rgba(255,255,255,0.5); font-size: 0.9rem; }
+.member-icon { font-size: 1rem; }
+.member-text { color: rgba(255,255,255,0.5); font-size: 0.85rem; }
 
 /* Search Modal */
 .search-modal {
@@ -820,7 +838,7 @@ onMounted(loadProfile)
   border-radius: 1rem;
   width: 100%;
   max-width: 500px;
-  max-height: 80vh;
+  max-height: 70vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -843,20 +861,24 @@ onMounted(loadProfile)
   font-size: 1rem;
 }
 
+.search-input:focus { outline: none; border-color: #e94560; }
+
 .search-close {
   background: rgba(255,255,255,0.1);
   border: none;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 0.5rem;
   color: white;
   cursor: pointer;
+  font-size: 1.2rem;
 }
 
-.search-loading {
-  padding: 3rem;
+.search-loading, .search-empty, .search-hint {
+  padding: 2rem;
   display: flex;
   justify-content: center;
+  color: rgba(255,255,255,0.5);
 }
 
 .search-spinner {
@@ -872,7 +894,7 @@ onMounted(loadProfile)
 
 .search-results {
   overflow-y: auto;
-  max-height: 400px;
+  flex: 1;
 }
 
 .search-result {
@@ -891,12 +913,11 @@ onMounted(loadProfile)
 
 .search-result:hover { background: rgba(255,255,255,0.05); }
 
-.result-img { width: 50px; height: 75px; object-fit: cover; border-radius: 0.25rem; }
-.result-placeholder { width: 50px; height: 75px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 0.25rem; font-size: 1.5rem; }
-.result-name { display: block; font-weight: 600; }
-.result-type { font-size: 0.85rem; color: rgba(255,255,255,0.5); }
-
-.search-empty { padding: 3rem; text-align: center; color: rgba(255,255,255,0.5); }
+.result-img { width: 45px; height: 65px; object-fit: cover; border-radius: 0.25rem; }
+.result-placeholder { width: 45px; height: 65px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 0.25rem; font-size: 1.25rem; }
+.result-info { flex: 1; min-width: 0; }
+.result-name { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.result-type { font-size: 0.8rem; color: rgba(255,255,255,0.5); text-transform: capitalize; }
 
 /* Upload Overlay */
 .upload-overlay {
@@ -922,12 +943,15 @@ onMounted(loadProfile)
 }
 
 /* Responsive */
-@media (max-width: 768px) {
-  .hero-section { flex-direction: column; text-align: center; }
-  .avatar-ring { width: 120px; height: 120px; }
-  .username { font-size: 1.8rem; }
-  .stats-strip { flex-wrap: wrap; gap: 1rem; padding: 1rem; }
+@media (max-width: 600px) {
+  .hero-section { flex-direction: column; text-align: center; gap: 1rem; }
+  .avatar-ring { width: 100px; height: 100px; }
+  .username { font-size: 1.5rem; }
+  .stats-strip { padding: 0.75rem; }
+  .stat-value { font-size: 1.2rem; }
   .stat-divider { display: none; }
-  .main-grid { grid-template-columns: 1fr; }
+  .favorites-row { gap: 0.5rem; }
+  .favorite-card { max-height: 120px; }
+  .bottom-grid { grid-template-columns: 1fr; }
 }
 </style>
