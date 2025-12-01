@@ -10,6 +10,7 @@
       @tutorial-next="$emit('tutorial-next')"
       @tutorial-step="$emit('tutorial-step', $event)"
       @tutorial-completion-shown="$emit('tutorial-completion-shown')"
+      @open-profile-page="$emit('open-profile-page')"
     />
   </div>
 <!-- Outer background color matches mockup exactly -->
@@ -35,7 +36,7 @@ export default {
       default: false
     }
   },
-  emits: ['start-game', 'how-to-play', 'tutorial-start', 'tutorial-next', 'tutorial-completion-shown', 'tutorial-step'],
+  emits: ['start-game', 'how-to-play', 'tutorial-start', 'tutorial-next', 'tutorial-completion-shown', 'tutorial-step', 'open-profile-page'],
 }
 </script>
 

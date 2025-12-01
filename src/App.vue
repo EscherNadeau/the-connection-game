@@ -14,6 +14,7 @@
         @tutorial-next="nextTutorialStep"
         @tutorial-step="setTutorialStep"
         @tutorial-completion-shown="tutorialJustCompleted = false"
+        @open-profile-page="currentView = 'profile'"
       />
     </template>
     <template v-else-if="currentView === 'join-room'">
@@ -93,6 +94,9 @@
     <template v-else-if="currentView === 'reset-password'">
       <ResetPassword @back-to-start="goToStart" />
     </template>
+    <template v-else-if="currentView === 'profile'">
+      <ProfilePage @back="goToStart" />
+    </template>
     
     <!-- How to Play Overlay -->
     <HowToPlayOverlay 
@@ -117,6 +121,7 @@ import Game from './views/Game.vue'
 import HowToPlayOverlay from './components/HowToPlayOverlay.vue'
 import CustomModeFlow from './components/CustomModeFlow.vue'
 import ResetPassword from './views/ResetPassword.vue'
+import ProfilePage from './views/ProfilePage.vue'
 import { debug, warn, error as logError } from './services/ui/log'
 import { useBackgroundStore } from '@store/background.store'
 import config from './config/env'

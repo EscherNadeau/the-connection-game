@@ -545,6 +545,7 @@ export interface StartScreenEmits {
   (e: 'tutorial-next'): void
   (e: 'tutorial-completion-shown'): void
   (e: 'tutorial-step', step: number): void
+  (e: 'open-profile-page'): void
 }
 
 // SettingsScreen types

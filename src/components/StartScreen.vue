@@ -4,7 +4,7 @@
     <div class="auth-corner">
       <UserMenu 
         @open-auth="showAuthModal = true" 
-        @open-profile="showProfile = true"
+        @open-profile="emit('open-profile-page')"
         @open-leaderboard="showLeaderboard = true"
         @open-friends="showFriends = true"
       />

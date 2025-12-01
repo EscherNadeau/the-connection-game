@@ -13,6 +13,8 @@ export interface Database {
           username: string | null
           display_name: string | null
           avatar_url: string | null
+          banner_url: string | null
+          bio: string | null
           created_at: string
           updated_at: string
           last_login_at: string | null
@@ -371,6 +373,8 @@ export interface FriendWithUser extends FriendRow {
     username: string | null
     display_name: string | null
     avatar_url: string | null
+          banner_url: string | null
+          bio: string | null
   }
 }
 
