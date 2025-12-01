@@ -90,6 +90,9 @@
         @tutorial-next="nextTutorialStep"
       />
     </template>
+    <template v-else-if="currentView === 'reset-password'">
+      <ResetPassword @back-to-start="goToStart" />
+    </template>
     
     <!-- How to Play Overlay -->
     <HowToPlayOverlay 
@@ -113,6 +116,7 @@ import ControllerView from './components/ControllerView.vue'
 import Game from './views/Game.vue'
 import HowToPlayOverlay from './components/HowToPlayOverlay.vue'
 import CustomModeFlow from './components/CustomModeFlow.vue'
+import ResetPassword from './views/ResetPassword.vue'
 import { debug, warn, error as logError } from './services/ui/log'
 import { useBackgroundStore } from '@store/background.store'
 import config from './config/env'
@@ -243,6 +247,14 @@ onMounted(() => {
   })
   
   // Auto-join game if URL has a room code
+  // Check for password reset flow
+  const hash = window.location.hash || ''
+  if (hash.includes('reset-password') || hash.includes('type=recovery') || hash.includes('access_token')) {
+    debug('Detected password reset flow', { hash })
+    currentView.value = 'reset-password' as ViewName
+    return
+  }
+
   const handleTryJoinFromHash = async () => {
     await tryJoinFromHash(currentView, gameMode, gameOptions, config)
   }

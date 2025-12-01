@@ -72,9 +72,20 @@
                 autocomplete="current-password"
               />
             </div>
-            <button type="button" class="forgot-link" @click="activeTab = 'reset'">
-              Forgot password?
-            </button>
+            <div class="form-options">
+              <label class="remember-me">
+                <input 
+                  type="checkbox" 
+                  v-model="rememberMe"
+                  @change="handleRememberMeChange"
+                />
+                <span class="checkmark"></span>
+                <span class="label-text">Remember me</span>
+              </label>
+              <button type="button" class="forgot-link" @click="activeTab = 'reset'">
+                Forgot password?
+              </button>
+            </div>
             <button type="submit" class="submit-btn" :disabled="isLoading">
               <span v-if="isLoading" class="spinner"></span>
               {{ isLoading ? 'Signing in...' : 'Sign In' }}
@@ -154,8 +165,6 @@
               ← Back to Sign In
             </button>
           </form>
-
-          <!-- Removed OAuth buttons -->
         </div>
       </div>
     </Transition>
@@ -163,8 +172,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useAuth } from '../../composables/useAuth'
+import { isRememberMeEnabled, setRememberMe } from '../../config/authStorage'
 
 const props = defineProps<{
   isOpen: boolean
@@ -191,11 +201,27 @@ const registerConfirm = ref('')
 const resetEmail = ref('')
 const successMessage = ref('')
 
+// Remember me state - defaults to true
+const rememberMe = ref(true)
+
+// Load remember me preference on mount
+onMounted(() => {
+  rememberMe.value = isRememberMeEnabled()
+})
+
+// Handle remember me checkbox change
+const handleRememberMeChange = () => {
+  setRememberMe(rememberMe.value)
+}
+
 // Clear form when modal opens/closes
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen) {
     clearError()
+    localError.value = ''
     successMessage.value = ''
+    // Refresh remember me state when modal opens
+    rememberMe.value = isRememberMeEnabled()
   } else {
     // Reset forms when closed
     loginEmail.value = ''
@@ -212,6 +238,7 @@ watch(() => props.isOpen, (isOpen) => {
 // Clear errors when switching tabs
 watch(activeTab, () => {
   clearError()
+  localError.value = ''
   successMessage.value = ''
 })
 
@@ -221,7 +248,11 @@ const closeModal = () => {
 
 const handleLogin = async () => {
   clearError()
+  localError.value = ''
   successMessage.value = ''
+  
+  // Set remember me preference before login
+  setRememberMe(rememberMe.value)
   
   const success = await signIn(loginEmail.value, loginPassword.value)
   if (success) {
@@ -266,20 +297,13 @@ const handleRegister = async () => {
 
 const handleResetPassword = async () => {
   clearError()
+  localError.value = ''
   successMessage.value = ''
   
   const success = await resetPassword(resetEmail.value)
   if (success) {
     successMessage.value = 'Password reset email sent! Check your inbox.'
   }
-}
-
-const handleGoogleSignIn = async () => {
-  await signInWithGoogle()
-}
-
-const handleDiscordSignIn = async () => {
-  await signInWithDiscord()
 }
 </script>
 
@@ -436,6 +460,73 @@ const handleDiscordSignIn = async () => {
   box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.2);
 }
 
+/* Form options row (remember me + forgot password) */
+.form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -0.25rem;
+}
+
+/* Remember Me Checkbox */
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+}
+
+.remember-me input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.remember-me .checkmark {
+  position: relative;
+  height: 18px;
+  width: 18px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.remember-me:hover .checkmark {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.remember-me input:checked ~ .checkmark {
+  background: linear-gradient(135deg, #e94560 0%, #c23a51 100%);
+  border-color: #e94560;
+}
+
+.remember-me .checkmark::after {
+  content: '';
+  position: absolute;
+  display: none;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.remember-me input:checked ~ .checkmark::after {
+  display: block;
+}
+
+.remember-me .label-text {
+  line-height: 1;
+}
+
 .forgot-link, .back-link {
   background: none;
   border: none;
@@ -494,67 +585,6 @@ const handleDiscordSignIn = async () => {
   to { transform: rotate(360deg); }
 }
 
-.oauth-section {
-  margin-top: 1.5rem;
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.divider::before, .divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.divider span {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.oauth-buttons {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.oauth-btn {
-  flex: 1;
-  padding: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0.5rem;
-  background: rgba(0, 0, 0, 0.2);
-  color: white;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  transition: all 0.2s;
-}
-
-.oauth-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-.oauth-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.oauth-btn.discord {
-  color: #5865F2;
-}
-
 /* Modal transitions */
 .modal-enter-active, .modal-leave-active {
   transition: opacity 0.25s ease;
@@ -584,9 +614,10 @@ const handleDiscordSignIn = async () => {
     font-size: 1.5rem;
   }
   
-  .oauth-buttons {
+  .form-options {
     flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
   }
 }
 </style>
-

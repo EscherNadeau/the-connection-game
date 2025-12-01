@@ -5,6 +5,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../types/database'
+import { authStorage } from './authStorage'
 
 // Get Supabase configuration from environment variables
 const getSupabaseUrl = (): string => {
@@ -34,7 +35,8 @@ export const getSupabaseClient = (): SupabaseClient<Database> | null => {
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: true,
-        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        // Use custom storage that respects "Remember Me" setting
+        storage: typeof window !== 'undefined' ? authStorage : undefined,
       },
       realtime: {
         params: {
@@ -59,4 +61,3 @@ export const supabaseConfig = {
 }
 
 export default getSupabaseClient
-
