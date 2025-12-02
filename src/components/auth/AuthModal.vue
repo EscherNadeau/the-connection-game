@@ -192,6 +192,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { useAuth } from '../../composables/useAuth'
+import { debug } from '../../services/ui/log'
 import { isRememberMeEnabled, setRememberMe } from '../../config/authStorage'
 
 const props = defineProps<{
@@ -304,13 +305,13 @@ const handleRegister = async () => {
     return
   }
   
-  console.log('Attempting signup with:', registerEmail.value)
+  debug('Attempting signup with:', registerEmail.value)
   
   const success = await signUp(registerEmail.value, registerPassword.value, {
     username: registerUsername.value || undefined,
   })
   
-  console.log('Signup result:', success)
+  debug('Signup result:', success)
   
   if (success) {
     successMessage.value = 'Account created! Please check your email to confirm.'

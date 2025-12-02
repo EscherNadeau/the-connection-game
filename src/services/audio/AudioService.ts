@@ -9,6 +9,7 @@
  */
 
 import { SoundEvents, SoundCategories, eventCategoryMap, type SoundEvent, type SoundCategory } from './soundEvents'
+import { debug, warn, error as logError } from '../ui/log'
 
 // ==========================================
 // CONFIGURATION
@@ -93,7 +94,7 @@ class AudioService {
     this.preloadSounds()
     this.initialized = true
     
-    console.log('[AudioService] Initialized')
+    debug('[AudioService] Initialized')
   }
 
   /**
@@ -121,7 +122,7 @@ class AudioService {
       this.audioCache.set(path, audio)
       return audio
     } catch (err) {
-      console.warn(`[AudioService] Failed to load sound: ${path}`, err)
+      warn(`[AudioService] Failed to load sound: ${path}`, err)
       return null
     }
   }
@@ -136,7 +137,7 @@ class AudioService {
     if (!path) {
       // Sound not registered - this is fine, just skip
       // Uncomment below for debugging:
-      // console.debug(`[AudioService] No sound registered for: ${event}`)
+      // debug(`[AudioService] No sound registered for: ${event}`)
       return
     }
 
@@ -157,10 +158,10 @@ class AudioService {
       
       sound.play().catch(err => {
         // Browser may block autoplay - this is expected
-        console.debug(`[AudioService] Playback blocked: ${event}`, err)
+        debug(`[AudioService] Playback blocked: ${event}`, err)
       })
     } catch (err) {
-      console.warn(`[AudioService] Error playing sound: ${event}`, err)
+      warn(`[AudioService] Error playing sound: ${event}`, err)
     }
   }
 
@@ -261,7 +262,7 @@ class AudioService {
       localStorage.setItem(STORAGE_KEYS.VOLUMES, JSON.stringify(this.volumes))
       localStorage.setItem(STORAGE_KEYS.MUTED, JSON.stringify(this.muted))
     } catch (err) {
-      console.debug('[AudioService] Could not save settings', err)
+      debug('[AudioService] Could not save settings', err)
     }
   }
 
@@ -281,7 +282,7 @@ class AudioService {
         this.muted = JSON.parse(mutedJson)
       }
     } catch (err) {
-      console.debug('[AudioService] Could not load settings', err)
+      debug('[AudioService] Could not load settings', err)
     }
   }
 

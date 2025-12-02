@@ -102,6 +102,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
+import { warn, error as logError } from '../../services/ui/log'
 import { useUserProfile } from '../../composables/useUserProfile'
 import type { FavoriteItem } from '../../composables/useUserProfile'
 
@@ -174,7 +175,7 @@ async function handleSearch() {
       // Use TMDB API to search
       const apiKey = import.meta.env.VITE_TMDB_API_KEY
       if (!apiKey) {
-        console.warn('TMDB API key not configured')
+        warn('TMDB API key not configured')
         isSearching.value = false
         return
       }
@@ -206,7 +207,7 @@ async function handleSearch() {
           year: item.release_date?.slice(0, 4) || item.first_air_date?.slice(0, 4) || undefined,
         }))
     } catch (err) {
-      console.error('Search failed:', err)
+      logError('Search failed:', err)
       searchResults.value = []
     } finally {
       isSearching.value = false

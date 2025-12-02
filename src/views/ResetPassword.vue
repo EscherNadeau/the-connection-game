@@ -89,6 +89,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { error as logError } from '../services/ui/log'
 import { getSupabaseClient } from '../config/supabase'
 
 const emit = defineEmits<{
@@ -128,7 +129,7 @@ onMounted(async () => {
     const { data: { session }, error: sessionError } = await client.auth.getSession()
     
     if (sessionError) {
-      console.error('Session error:', sessionError)
+      logError('Session error:', sessionError)
       error.value = 'Invalid or expired reset link. Please request a new one.'
       isLoading.value = false
       return
@@ -159,7 +160,7 @@ onMounted(async () => {
     
     isLoading.value = false
   } catch (err) {
-    console.error('Reset password init error:', err)
+    logError('Reset password init error:', err)
     error.value = 'Failed to verify reset link. Please try again.'
     isLoading.value = false
   }
@@ -194,7 +195,7 @@ const handleSubmit = async () => {
     })
     
     if (updateError) {
-      console.error('Password update error:', updateError)
+      logError('Password update error:', updateError)
       
       // Check if it's the "same password" error
       const errorMsg = updateError.message?.toLowerCase() || ''
@@ -218,7 +219,7 @@ const handleSubmit = async () => {
     window.location.hash = ''
     
   } catch (err) {
-    console.error('Password update error:', err)
+    logError('Password update error:', err)
     formError.value = 'An unexpected error occurred'
   } finally {
     isSubmitting.value = false

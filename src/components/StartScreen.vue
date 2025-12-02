@@ -421,9 +421,8 @@ const onAuthenticated = () => {
 const handleFriendInvite = (friendId: string) => {
   info(`Invite friend: ${friendId}`)
   showFriends.value = false
-  // TODO: Create a game and send invite to friend
-  // For now, just start a multiplayer game
-  emit('start-game', { action: 'create', mode: 'multiplayer' })
+  // Start a solo game for now (friend invites not yet implemented)
+  emit('start-game', { action: 'create', mode: 'solo' })
 }
 
 // Toggle play menu
