@@ -58,4 +58,20 @@ export function clearAuthSession(): void {
   keys.forEach(key => localStorage.removeItem(key))
 }
 
+
+/**
+ * Clear session from localStorage if Remember Me is disabled
+ * Call this on app initialization
+ */
+export function clearSessionIfRememberMeDisabled(): void {
+  if (typeof window === 'undefined') return
+  if (!isRememberMeEnabled()) {
+    // Clear all Supabase auth tokens from localStorage
+    const supabaseKeys = Object.keys(localStorage).filter(key => 
+      key.startsWith('sb-') && key.includes('auth-token')
+    )
+    supabaseKeys.forEach(key => localStorage.removeItem(key))
+  }
+}
+
 export default authStorage

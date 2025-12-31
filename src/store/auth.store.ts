@@ -57,6 +57,8 @@ export const useAuthStore = defineStore('auth', {
       if (this.isInitialized) return
 
       try {
+        // Clear session from localStorage if Remember Me is disabled
+        clearSessionIfRememberMeDisabled()
         this.isLoading = true
         
         if (!authService.isAvailable()) {

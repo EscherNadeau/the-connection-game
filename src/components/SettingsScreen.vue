@@ -1539,6 +1539,7 @@ const updateRoomCode = () => {
                   ? new Date(goal1Data.release_date).getFullYear()
                   : null,
                 isStartingItem: true,
+                isGoal: true,
                 source: 'goal1',
                 mode: 'goal',
                 tmdbData: goal1Data,
@@ -1550,6 +1551,7 @@ const updateRoomCode = () => {
                 title: settings.goal1,
                 type: 'Goal',
                 isStartingItem: true,
+                isGoal: true,
                 source: 'goal1',
                 mode: 'goal',
               })
@@ -1568,6 +1570,7 @@ const updateRoomCode = () => {
                   ? new Date(goal2Data.release_date).getFullYear()
                   : null,
                 isStartingItem: true,
+                isGoal: true,
                 source: 'goal2',
                 mode: 'goal',
                 tmdbData: goal2Data,
@@ -1579,6 +1582,7 @@ const updateRoomCode = () => {
                 title: settings.goal2,
                 type: 'Goal',
                 isStartingItem: true,
+                isGoal: true,
                 source: 'goal2',
                 mode: 'goal',
               })
@@ -1853,82 +1857,14 @@ const updateRoomCode = () => {
           cast: modeSettings.value.commonCastFilter || modeSettings.value.castFilter || 'mixed',
           mediaType: 'all',
         })
-        // Decide solo or multi
-        const hash = window.location.hash || ''
-        const m = hash.match(/play=(solo|multi|pvp|couch-multiplayer|couch-pvp)/)
-        const playType = (props.mode && props.mode.gameOptions && props.mode.gameOptions.playType) || (m ? m[1] : null)
+        // Solo-only: always use solo mode, no multiplayer/snapshot API calls
+        const playType = 'solo'
         
-        const isSolo = playType === 'solo'
-        const isPvP = playType === 'pvp' || playType === 'couch-pvp'
-        const isCouch = playType === 'couch-multiplayer' || playType === 'couch-pvp'
-
-        let code = null
-        if (!isSolo) {
-          // Generate a simple room code and set share URL with encoded state in hash
-          code = Math.random().toString(36).slice(2, 6).toUpperCase()
-          const sharePayload = {
-            modeId: props.mode.id,
-            modeTitle: props.mode.title || props.mode.name || 'Mode',
-            modeSettings: modeSettings.value,
-            startingItems,
-            playType: playType
-          }
-          // Try to store on snapshot server for short code
-          let encoded = ''
-          try {
-            const resp = await fetch(`http://${location.hostname}:3011/api/snapshots`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ data: sharePayload }),
-            })
-            if (resp.ok) {
-              const json = await resp.json()
-              if (json && json.code) {
-                window.location.hash = `room=${json.code}`
-                try { 
-                  sessionStorage.setItem('lastRoomCode', json.code) 
-                } catch (err) {
-                  debug('Failed to save room code to sessionStorage', { error: err, code: json.code })
-                }
-                code = json.code
-              } else {
-                encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sharePayload))))
-                window.location.hash = `room=${code}&s=${encoded}`
-                try { 
-                sessionStorage.setItem('lastRoomCode', code) 
-              } catch (err) {
-                debug('Failed to save room code to sessionStorage', { error: err, code })
-              }
-              }
-            } else {
-              encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sharePayload))))
-              window.location.hash = `room=${code}&s=${encoded}`
-              try { 
-                sessionStorage.setItem('lastRoomCode', code) 
-              } catch (err) {
-                debug('Failed to save room code to sessionStorage', { error: err, code })
-              }
-            }
-          } catch (e) {
-            try {
-              encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sharePayload))))
-              window.location.hash = `room=${code}&s=${encoded}`
-              try { 
-                sessionStorage.setItem('lastRoomCode', code) 
-              } catch (err) {
-                debug('Failed to save room code to sessionStorage', { error: err, code })
-              }
-            } catch (err) {
-              debug('Failed to generate room code, using fallback', { error: err })
-            }
-          }
-        } else {
-          // Solo: clear hash
-          try { 
-            window.location.hash = '' 
-          } catch (err) {
-            debug('Failed to clear location hash', { error: err })
-          }
+        // Clear hash for solo games
+        try { 
+          window.location.hash = '' 
+        } catch (err) {
+          debug('Failed to clear location hash', { error: err })
         }
         const gameConfig = gameEngine.startGame(props.mode.id, {
           timeLimit: modeSettings.value.timeLimit,
@@ -1936,12 +1872,8 @@ const updateRoomCode = () => {
           startingItems: startingItems, // Pass starting items to game engine
         })
 
-        // Store play type in sessionStorage for persistence
-        if (isSolo) {
-          sessionStorage.setItem('playType', 'solo')
-        } else {
-          sessionStorage.setItem('playType', playType || 'multi')
-        }
+        // Store play type in sessionStorage for persistence (always solo)
+        sessionStorage.setItem('playType', 'solo')
 
         // Create a copy of the mode with applied settings and game config
         const modeWithSettings = {
@@ -2083,84 +2015,23 @@ const updateRoomCode = () => {
 
       // Start game request from Custom Mode panel
       if (config.mode === 'start') {
-        // Handle custom mode multiplayer setup
+        // Handle custom mode - solo-only, no multiplayer setup needed
         const handleCustomModeMultiplayer = async () => {
-          // Extract play type
-          const hash = window.location.hash || ''
-          const m = hash.match(/play=(solo|multi|pvp)/)
-          const playType = m ? m[1] : sessionStorage.getItem('playType') || 'solo'
-          const isSolo = playType === 'solo'
-
-          let code = null
-          if (!isSolo) {
-            // Generate room code and share URL for custom mode
-            code = Math.random().toString(36).slice(2, 6).toUpperCase()
-            const sharePayload = {
-              modeId: 'custom',
-              modeTitle: 'Challenge Builder',
-              modeSettings: modeSettings.value,
-              startingItems: Array.isArray(config.startingItems) ? config.startingItems : [],
-              goalQueue: config.goalQueue || [],
-              currentGoalIndex: config.currentGoalIndex || 0,
-              gameType: config.gameType || 'knowledge',
-            }
-            
-            // Try to store on snapshot server for short code
-            try {
-              const resp = await fetch(`http://${location.hostname}:3011/api/snapshots`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: sharePayload }),
-              })
-              if (resp.ok) {
-                const json = await resp.json()
-                if (json && json.code) {
-                  window.location.hash = `room=${json.code}`
-                  try { 
-                  sessionStorage.setItem('lastRoomCode', json.code) 
-                } catch (err) {
-                  debug('Failed to save room code to sessionStorage', { error: err, code: json.code })
-                }
-                  code = json.code
-                } else {
-                  const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sharePayload))))
-                  window.location.hash = `room=${code}&s=${encoded}`
-                  try { 
-                sessionStorage.setItem('lastRoomCode', code) 
-              } catch (err) {
-                debug('Failed to save room code to sessionStorage', { error: err, code })
-              }
-                }
-              } else {
-                const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sharePayload))))
-                window.location.hash = `room=${code}&s=${encoded}`
-                try { 
-                sessionStorage.setItem('lastRoomCode', code) 
-              } catch (err) {
-                debug('Failed to save room code to sessionStorage', { error: err, code })
-              }
-              }
-            } catch (e) {
-              try {
-                const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(sharePayload))))
-                window.location.hash = `room=${code}&s=${encoded}`
-                try { 
-                sessionStorage.setItem('lastRoomCode', code) 
-              } catch (err) {
-                debug('Failed to save room code to sessionStorage', { error: err, code })
-              }
-              } catch (err) {
-              debug('Failed to generate room code, using fallback', { error: err })
-            }
-            }
-          } else {
-            // Solo: clear hash
-            try { 
+          // Solo-only: always clear hash, no snapshot API calls
+          const playType = 'solo'
+          
+          // Clear hash for solo games
+          try { 
             window.location.hash = '' 
           } catch (err) {
             debug('Failed to clear location hash', { error: err })
           }
-          }
+          
+          // Store play type (always solo)
+          sessionStorage.setItem('playType', 'solo')
+          
+          // Skip all multiplayer/snapshot API code - return early
+          return
 
         // Build mode payload with multiplayer support
         const modeWithSettings = {
@@ -2175,7 +2046,7 @@ const updateRoomCode = () => {
               currentGoalIndex: config.currentGoalIndex || 0,
               gameType: config.gameType || 'knowledge',
               playType: playType,
-              ...(isSolo ? {} : { roomCode: (sessionStorage.getItem('lastRoomCode') || code) }),
+              
             },
           }
           
